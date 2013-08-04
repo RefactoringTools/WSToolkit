@@ -1,7 +1,5 @@
 %%% ====================================================================
-%%% Generate the sut.erl file according to a 'model'; to be used with erlsom.
-%%%
-%%%                    This is a prototype!
+%%%                    This is only a prototype!
 %% ====================================================================
 -module(write_eqc_statem).
 

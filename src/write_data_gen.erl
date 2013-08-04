@@ -1,7 +1,5 @@
 %%% ====================================================================
-%%% Generate .hrl file according to a 'model'; to be used with erlsom.
-%%%
-%%%                    This is a prototype!
+%%%                    This is only a prototype!
 %% ====================================================================
 -module(write_data_gen).
 
@@ -376,8 +374,7 @@ get_input_data_types_2({_APIName, Param, _Response}, #model{tps = Types})->
                          false -> ParamName;
                          V -> V#alt.tp
                      end,
-            %% [T||T<-Types, T#type.nm==TypeName]
-            [TypeName]
+            [T||T<-Types, T#type.nm==TypeName]
     end.
     
 
