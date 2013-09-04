@@ -26,7 +26,7 @@
 %%
 %%@author  Huiqing Li <H.Li@kent.ac.uk>
 %%% ====================================================================
-%%% Generate .hrl file according to a 'model'; to be used with erlsom.
+%%% Generate Erlang type definitions according to an .xsd file.
 %%%
 %%%                    THIS IS ONLY PROTOTYPE!
 %% =====================================================================
@@ -39,16 +39,18 @@
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 
-%% gen_v0() ->
-%%     write_hrl_file("../priv/vodkatv_v0.xsd", "vodkatv_gen_v0.hrl").
-
-%% gen() ->
-%%     write_hrl_file("../priv/vodkatv.xsd", "vodkatv_gen.hrl").
-
 test_bookstore() ->
-    write_hrl_file("c:/cygwin/home/hl/bookstore-sample/booklist.xsd", "booklist.hrl"),
-    write_hrl_file("c:/cygwin/home/hl/bookstore-sample/book.xsd", "book.hrl").
-  
+    write_hrl_file("../tests/bookstore_sample/booklist.xsd", "booklist.hrl"),
+    write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
+
+%%@doc Generate type definitions. This function takes an .xsd file as input, 
+%%     generates the Erlang representation of types, and write the results to 
+%%     `OutFile'. The `erlsom' library is used to parse .xsd files, however
+%%     `erlsom' has certain limitations, for instance in Erlsom, all restrictions
+%%     on simple types are ignored, and those types are treated as 'string'. As
+%%     a result, some of the types generated might not be as accurate as needed.
+-spec write_hrl_file(XsdFile::file:filename(), OutFile::file:filename()) 
+                    -> ok | {error, term()}.
 write_hrl_file(XsdFile, OutFile) ->
     Result = erlsom:compile_xsd_file(XsdFile, []),
     case Result of
@@ -64,10 +66,8 @@ write_hrl_file_1(#model{tps = Types}, OutFile) ->
     Content=write_types(Types, AllTypes, Acc),
     file:write_file(OutFile, list_to_binary(Content)).
 
-
 header() -> 
-    "%%% This is an automatically generated Erlang .hrl file.\n\n".
-
+    "%%% This is an automatically generated Erlang file.\n\n".
 
 write_types(Types, AllTypes, Acc) ->
     WrittenTypesWithDeps=[write_a_record_type(T, AllTypes)
@@ -107,7 +107,7 @@ write_an_element(#el{alts = Alternatives, mn=_Min, mx=Max}, AllTypes, CountChoic
     if (is_integer(Max) andalso Max >1) orelse Max==unbound ->
             write_alternatives(Alternatives, AllTypes, CountChoices, true);
        true ->
-             write_alternatives(Alternatives, AllTypes, CountChoices, false)
+            write_alternatives(Alternatives, AllTypes, CountChoices, false)
     end.
 
 
@@ -221,8 +221,6 @@ write_name(Name) ->
             L;
        false -> "'"++L++"'"
     end.
-
-
 
 reserved_word(W) ->
     lists:member(W, reserved_words()).

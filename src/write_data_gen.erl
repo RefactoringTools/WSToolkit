@@ -30,28 +30,38 @@
 %% ====================================================================
 -module(write_data_gen).
 
--export([write_data_generators_to_file/3,
+-export([write_data_generators_to_file/2,
+         write_data_generators_to_file/3,
+         write_data_generators/1,
          write_data_generators/2]).
 
--export([test/0]).
+-export([test1/0, test2/0, test3/0]).
 
-
-%% -compile(export_all).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
-test() ->
-    write_data_generators_to_file("../tests/bookstore_sample/booklist.xsd", "booklist.erl"),
-    write_data_generators_to_file("../tests/bookstore_sample/book.xsd", "book.erl"),
+test1() ->
+    write_data_generators_to_file("../tests/bookstore_sample/booklist.xsd", "booklist.erl").
+test2()->
+    write_data_generators_to_file("../tests/bookstore_sample/book.xsd", "book.erl").
+
+test3() ->
     write_data_generators_to_file("../tests/bookstore_sample/vodkatv.xsd",
                                   "../tests/bookstore_sample/vodkatv_expanded.wsdl",
                                   "vodkatv.erl").
-   
 
-write_data_generators_to_file(XsdFile, OutFile) ->
-    write_data_generators_to_file(XsdFile, none, OutFile).
+%%@doc. Generates QuickCheck data generators according to the 
+%%      type specification given in the XSD schema. If the 
+%%      WSDL specification is provided, type generators are created 
+%%      only for input types, otherwise type generators are created
+%%      for both input and output types. The data generators created 
+%%      are written to file `OutFile'.
+-spec write_data_generators_to_file(XsdFile::file:filename(), 
+                                    WsdlFile::file:filename()|none,
+                                    OutFile::file:filename()) 
+                                   -> ok | {error, Error::term()}.
 write_data_generators_to_file(XsdFile, WsdlFile, OutFile) ->
     ModuleName = filename:basename(OutFile, ".erl"),
     Header = header(ModuleName),
@@ -61,13 +71,25 @@ write_data_generators_to_file(XsdFile, WsdlFile, OutFile) ->
         {error, Error} ->
             {error, Error}
     end.
-            
 
-header(ModuleName) ->
-    "-module("++ModuleName++").\n\n"
-    "-include_lib(\"eqc/include/eqc.hrl\").\n\n"
-    "-compile(export_all).\n\n".
+%%@doc. For use when the WSDL file is not available.
+%%@see write_data_generators_to_file/3.
+-spec write_data_generators_to_file(XsdFile::file:filename(), 
+                                    OutFile::file:filename()) 
+                                   -> ok | {error, Error::term()}.
+write_data_generators_to_file(XsdFile, OutFile) ->
+    write_data_generators_to_file(XsdFile, none, OutFile).
 
+
+
+%%@doc. Generates QuickCheck data generators according to the 
+%%      type specification given in the XSD schema.
+%%      The same as `write_data_generators_to_file/3', apart for 
+%%      that this function returns the data generators as a 
+%%      string.
+-spec write_data_generators(XsdFile::file:filename(),
+                            WsdlFile::file:filename()|none)
+                           -> {ok, string()} | {error, Error::term()}.
 write_data_generators(XsdFile, none) ->
     Result = erlsom:compile_xsd_file(XsdFile, []),
     case Result of
@@ -76,17 +98,27 @@ write_data_generators(XsdFile, none) ->
         {error, Error} -> 
             {error, Error}
     end;
-
 write_data_generators(XsdFile, WsdlFile) ->
     Result = erlsom:compile_xsd_file(XsdFile, []),
     case Result of
         {ok, Model} ->
             InputDataTypes = get_input_data_types(WsdlFile, Model),
-            io:format("InputDataTypes:~p\n", [InputDataTypes]),
             {ok, write_data_generators_1(Model, InputDataTypes)};
         {error, Error} -> 
             {error, Error}
     end.
+
+%%@doc.For use when the WSDL file is not available.
+%%@see `write_data_generators/2'.
+-spec write_data_generators(XsdFile::file:filename())
+                           -> {ok, string()} | {error, Error::term()}.
+write_data_generators(XsdFile) ->
+    write_data_generators(XsdFile, none).
+
+header(ModuleName) ->
+    "-module("++ModuleName++").\n\n"
+    "-include_lib(\"eqc/include/eqc.hrl\").\n\n"
+    "-compile(export_all).\n\n".
 
 write_data_generators_1(#model{tps = Types}) ->
     Acc ="\n\n"
@@ -442,7 +474,7 @@ get_all_input_types([T|Ts], AllTypes, Acc) ->
     end.
 
 get_direct_dependent_types(T, AllTypes) -> 
-    T1=[Type||Type<-AllTypes, Type#type.nm==T],
+    T1=[Type||Type<-AllTypes, Type#type.nm==T#type.nm],
     case T1 of
         [] -> {[], []};
         [T2]->{T1,get_direct_dependent_types_1(T2)}
@@ -455,3 +487,4 @@ get_direct_dependent_types_1(#type{nm = _Name, tp=_Type,
     Elems = [A#alt.tag||E<-Elements, A<-E#el.alts],
     Attrs ++ Elems.
               
+ 
