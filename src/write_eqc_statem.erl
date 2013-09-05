@@ -1,11 +1,3 @@
-%%% ====================================================================
-%%%                    This is only a prototype!
-%% ====================================================================
--module(write_eqc_statem).
-
--export([write_eqc_statem/5]).
-
--export([test/0]).
 
 %% Copyright (c) 2013, Huiqing Li, Simon Thompson
 %% All rights reserved.
@@ -34,7 +26,14 @@
 %% ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 %%@author  Huiqing Li <H.Li@kent.ac.uk>
-%% -compile(export_all).
+%%% ====================================================================
+%%%                    This is only a prototype!
+%% ====================================================================
+-module(write_eqc_statem).
+
+-export([write_eqc_statem/5]).
+
+-export([test/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
