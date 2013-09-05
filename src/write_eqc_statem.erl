@@ -33,25 +33,35 @@
 
 -export([write_eqc_statem/5]).
 
--export([test/0]).
+-export([test1/0, test2/0, test3/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
-test() ->
+-type module_name()::atom().
+
+
+%%@private
+test1() ->
     write_eqc_statem(
       "../tests/bookstore_sample/booklist_expanded.wsdl", 
       "../tests/bookstore_sample/booklist.xsd",
       none,
       "booklist_sut",
-      "booklist_test.erl"),
-     write_eqc_statem(
+      "booklist_test.erl").
+
+%%@private
+test2() ->
+    write_eqc_statem(
       "../tests/bookstore_sample/book-0321396855_expanded.wsdl", 
       "../tests/bookstore_sample/book.xsd",
       none,
       "book_sut",
-      "book_test.erl"),
+      "book_test.erl").
+
+%%@private
+test3() ->
     write_eqc_statem(
       "../tests/bookstore_sample/vodkatv_expanded.wsdl", 
       "../tests/bookstore_sample/vodkatv.xsd",
@@ -59,6 +69,17 @@ test() ->
       "vaa_sut",
       "test_sut.erl").
 
+%%@doc Generates the initial `eqc_statem' test module. This function 
+%%     takes the WSDL specification of the web service, the XSD schema,
+%%     the .hrl file containing the type definitions, or `none' if no
+%%     .hrl file is needed, and the name of the connector module as input,
+%%     and writes the `eqc_statem' module generated to `OutFile'.
+-spec write_eqc_statem(WsdlFile::file:filename(),
+                       XsdFile::file:filename(),
+                       HrlFile::file:filename()|none,
+                       SUT::module_name(),
+                       OutFile::file:filename()) ->
+                              ok | {error, Error::term()}.
 write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, OutFile) ->
     {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = erlsom:add_xsd_model(Model),
@@ -88,7 +109,6 @@ write_eqc_statem_2(APIInterface, DataModel, WsdlFile,
     AdaptorFuns = gen_adaptor_funs(APIInterface, DataModel, []),
     UtilFuns=util_funs(),
     {ok, DataGens}= write_data_gen:write_data_generators(XsdFile, WsdlFile),
-    io:format("DataGens:~p\n", [DataGens]),
     Heading=create_heading(HrlFile, SUT, OutFile),
     Content = Heading ++ Commands ++PreConds ++ 
         PostConds ++ NextState++ AdaptorFuns++ 
