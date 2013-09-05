@@ -39,6 +39,7 @@
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 
+%%@private
 test_bookstore() ->
     write_hrl_file("../tests/bookstore_sample/booklist.xsd", "booklist.hrl"),
     write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").

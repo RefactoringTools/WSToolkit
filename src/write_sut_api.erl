@@ -32,27 +32,34 @@
 
 -export([write_sut_api/5]).
 
--export([test/0]).
-
-%% -compile(export_all).
+-export([test1/0,
+         test2/0,
+         test3/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
-test() ->
+%%@private
+test1() ->
     write_sut_api(
       none,
       "../tests/bookstore_sample/booklist_expanded.wsdl", 
       "../tests/bookstore_sample/booklist.xsd",
       "http://www.bookstore.com/books/",
-      "booklist_sut.erl"),
+      "booklist_sut.erl").
+
+%%@private
+test2() ->
     write_sut_api(
       none,
       "../tests/bookstore_sample/book-0321396855_expanded.wsdl", 
       "../tests/bookstore_sample/book.xsd",
       "http://www.bookstore.com/books/",
-      "book_sut.erl"),
+      "book_sut.erl").
+
+%%@private
+test3()->
     write_sut_api(
       none,
       "../tests/bookstore_sample/vodkatv_v0.wsdl", 
@@ -60,6 +67,24 @@ test() ->
       "http://localhost:8082/vodkatv/",
       "vodkatv_sut.erl").
 
+%%@doc Generates the WS connector module. The WS connector module
+%%     defines a collection of connector functions that are used by
+%%     QuickCheck to invoke web service operations. There is a connector
+%%     function defined for each web service operation.
+%%     This function takes the the .hrl file containing type definitions,
+%%     the WSDL specification, the XSD schema, and the base url for the 
+%%     web service as input, and writes the connector module generated to 
+%%     `OutFile'. 
+%%     Note: Some utility functions are added to the module generated, but 
+%%     in some cases not all the utility functions are used by the connector
+%%     functions. This will be improved.
+-type url()::string().
+-spec write_sut_api(HrlFile::file:filename()|none,
+                    WsdlFile::file:filename(),
+                    XsdFile::file:filename(),
+                    BaseURL::url(),
+                    OutFile::file:filename())->
+                           ok|{error, Error::term()}.
 write_sut_api(HrlFile, WsdlFile, XsdFile, BaseURL, OutFile) ->
     {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = erlsom:add_xsd_model(Model),

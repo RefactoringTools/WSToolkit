@@ -42,11 +42,13 @@
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+%%@private
 test1() ->
     write_data_generators_to_file("../tests/bookstore_sample/booklist.xsd", "booklist.erl").
+%%@private
 test2()->
     write_data_generators_to_file("../tests/bookstore_sample/book.xsd", "book.erl").
-
+%%@private
 test3() ->
     write_data_generators_to_file("../tests/bookstore_sample/vodkatv.xsd",
                                   "../tests/bookstore_sample/vodkatv_expanded.wsdl",
