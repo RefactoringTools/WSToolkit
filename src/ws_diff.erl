@@ -32,26 +32,36 @@
 
 -export([ws_diff/2]).
 
-%%-export([test/0]).
+-export([test/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+test() ->
+    ws_diff({"../tests/bookstore_sample/vodkatv_v0.wsdl",
+             "../tests/bookstore_sample/vodkatv_v0.xsd"},
+            {"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
+             "../tests/bookstore_sample/vodkatv.xsd"}).
 
-%% test() ->
-%%     ws_diff({"../tests/bookstore_sample/vodkatv_v0.xsd", 
-%%              "../tests/bookstore_sample/vodkatv_v0.wsdl"},
-%%             {"../tests/bookstore_sample/vodkatv.xsd", 
-%%              "../tests/bookstore_sample/vodkatv_expanded.wsdl"}).
-
-
-ws_diff({XsdFile1, WsdlFile1}, {XsdFile2, WsdlFile2}) ->
-    {ok, _OldTypes, OldAPIs}=analyze_model(XsdFile1, WsdlFile1),
-    {ok, _NewTypes, NewAPIs}=analyze_model(XsdFile2, WsdlFile2),
+%%@doc. This funtions tries to infer the API changes between two versions
+%%      of web service specification. It takes the WSDL and XSD specification
+%%      of both versions, and reports what has been changed from the first 
+%%      version to the second version.So far, the changes this tool is able to 
+%%      report include: the adding/removing of WS APIs, renaming of APIs, 
+%%      adding/removing of API parameters, renaming of API parameters, as 
+%%      well as parameter type changes. The accuracy of this tool is still 
+%%      to be evaluated!
+-spec ws_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
+              {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
+                     {ok, [term()]}|{error, term()}.
+ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
+    {ok, _OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
+    {ok, _NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
     APIChanges =levenshtein_dist(OldAPIs, NewAPIs),
-    analyze_api_changes(APIChanges).
-      
+    APIChanges1=analyze_api_changes(APIChanges),
+    {ok, APIChanges1}.
+
 
 analyze_model(XsdFile, WsdlFile) ->
     {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
@@ -104,30 +114,117 @@ analyze_api_changes_2(Changes) ->
     DistMatrix=[{{d,E1}, {i, E2}, calc_api_dist(E1, E2)}
             ||{d, E1}<-Deletes, {i, E2}<-Inserts],
     ParaChanges = [{{d, E1},{i, E2}}||
-                      {{d, E1},{i, E2}, {0,0, _I,_O}}<-DistMatrix],
+                      {{d, E1},{i, E2}, 
+                       {0,0, _I,_O}}<-DistMatrix],
     Renames = [{{d, E1}, {i, E2}}||
-                  {{d, E1},{i, E2}, {1,0, 0,0}}<-DistMatrix],
-    
+                  {{d, E1},{i, E2}, {1,0,0,0}}<-DistMatrix],
     FakeInserts = element(2, lists:unzip(ParaChanges)) ++
         element(2, lists:unzip(Renames)),
     Changes1 = Changes -- FakeInserts,
     analyze_api_changes_2(Changes1, ParaChanges++Renames, []).
-
+ 
 analyze_api_changes_2([], _InterfaceChanges, Acc) ->
     lists:reverse(Acc);
-analyze_api_changes_2([{'*', E}|Others], InterfaceChanges, Acc) ->
-   analyze_api_changes_2(Others, InterfaceChanges, [{unchange, E}|Acc]);
+analyze_api_changes_2([{'*', _E}|Others], InterfaceChanges, Acc) ->
+   analyze_api_changes_2(Others, InterfaceChanges, Acc);
 analyze_api_changes_2([{d, E}|Others], InterfaceChanges, Acc)->
     case lists:keyfind({d,E}, 1, InterfaceChanges) of 
         false ->
-            analyze_api_changes_2(Others, InterfaceChanges, [{delete, E}|Acc]);
+            analyze_api_changes_2(Others, InterfaceChanges, [{api_deleted, E}|Acc]);
         {{d, E}, {i, E1}} ->
-            analyze_api_changes_2(Others, InterfaceChanges, [{substitute, E, E1}|Acc])
+            Res = analyze_input_output_change(E, E1),
+            analyze_api_changes_2(Others, InterfaceChanges, [{api_parameter_changed, E, E1, Res}|Acc])
     end;
 analyze_api_changes_2([{i,E}|Others], InterfaceChanges, Acc) ->
-    analyze_api_changes_2(Others,  InterfaceChanges, [{insert, E}|Acc]).
+    analyze_api_changes_2(Others,  InterfaceChanges, [{api_added, E}|Acc]).
+       
+analyze_input_output_change({_APIName1, Input1, Output1, _}, 
+                            {_APIName2, Input2, Output2, _}) ->
+    InputChanges =levenshtein_dist(Input1, Input2),
+    InputChanges1 = analyze_input_output_changes(InputChanges, in),
+    OutputChanges =levenshtein_dist(Output1, Output2),
+    OutputChanges1 = analyze_input_output_changes(OutputChanges, out),
+    {InputChanges1,  OutputChanges1}.
+                          
+
+analyze_input_output_changes(Changes, Type) ->
+    Res=analyze_input_output_changes_1(Changes, []),
+    analyze_input_output_changes_2(Res, Type).
+
+analyze_input_output_changes_1([], Acc) ->
+    lists:reverse(Acc);
+analyze_input_output_changes_1([{'*',E}|Others], Acc) ->
+    analyze_input_output_changes_1(Others, [{'*',E}|Acc]);
+analyze_input_output_changes_1([{i, E}|Others], Acc) ->
+    case lists:member({d, E}, Others) of 
+        true ->
+            Others1=lists:keyreplace(E, 2, Others, {'*', E}),
+            analyze_input_output_changes_1(Others1, Acc);
+        false -> 
+            analyze_input_output_changes_1(Others, [{i, E}|Acc])
+    end;
+analyze_input_output_changes_1([{d, E}|Others], Acc) ->
+    case lists:member({i, E}, Others) of 
+        true ->
+            Others1=lists:keyreplace(E, 2, Others, {'*', E}),
+            analyze_input_output_changes_1(Others1, Acc);
+        false -> 
+            analyze_input_output_changes_1(Others, [{d, E}|Acc])
+    end;
+analyze_input_output_changes_1([{s, E1, E2}|Others], Acc) ->
+    analyze_input_output_changes_1([{d, E1}, {i, E2}|Others], Acc).
         
-                                  
+
+
+analyze_input_output_changes_2(Changes, Type) ->
+    Deletes = [{d, E}||{d, E}<-Changes],
+    Inserts = [{i, E}||{i, E}<-Changes],
+    DistMatrix=[{{d,E1}, {i, E2}, calc_api_dist(E1, E2)}
+            ||{d, E1}<-Deletes, {i, E2}<-Inserts],
+    ParaChanges = [{{d, E1},{i, E2}}||
+                      {{d, E1},{i, E2}, {0,1}}<-DistMatrix],
+    Renames = [{{d, E1}, {i, E2}}||
+                  {{d, E1},{i, E2}, {1, 0}}<-DistMatrix],
+    FakeInserts = element(2, lists:unzip(ParaChanges)) ++
+        element(2, lists:unzip(Renames)),
+    Changes1 = Changes -- FakeInserts,
+    analyze_input_output_changes_2(Changes1, {ParaChanges, Renames}, Type, []).
+ 
+analyze_input_output_changes_2([], _InterfaceChanges, _Type, Acc) ->
+    lists:reverse(Acc);
+analyze_input_output_changes_2([{'*', _E}|Others], InterfaceChanges, Type, Acc) ->
+    analyze_input_output_changes_2(Others, InterfaceChanges, Type, Acc);
+analyze_input_output_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, Type, Acc) ->
+    Changes = ParaChanges++Renames,
+    case lists:keyfind({d,E}, 1, Changes) of 
+        false when Type==in->
+            analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{api_parameter_deleted, E}|Acc]);
+        false when Type==out->
+            analyze_input_output_changes_2(Others, InterfaceChanges, Type,[{output_field_deleted, E}|Acc]);
+        {{d, E}, {i, E1}} when Type==in->
+            case lists:member({{d, E}, {i, E1}}, ParaChanges) of 
+                true ->
+                    analyze_input_output_changes_2(
+                      Others, InterfaceChanges, Type,[{api_parameter_type_changed, E, E1}|Acc]);
+                false ->
+                    analyze_input_output_changes_2(
+                      Others, InterfaceChanges, Type,[{api_parameter_renamed, E, E1}|Acc])
+            end;
+        {{d, E}, {i, E1}} when Type==out->
+            case lists:member({{d, E}, {i, E1}}, ParaChanges) of 
+                true ->
+                    analyze_input_output_changes_2(
+                      Others, InterfaceChanges, Type,[{api_output_field_type_changed, E, E1}|Acc]);
+                false ->
+                    analyze_input_output_changes_2(
+                      Others, InterfaceChanges, Type,[{api_output_field_renamed, E, E1}|Acc])
+            end
+    end;
+analyze_input_output_changes_2([{i,E}|Others], InterfaceChanges, in, Acc)->
+    analyze_input_output_changes_2(Others, InterfaceChanges, in, [{api_parameter_added, E}|Acc]);
+analyze_input_output_changes_2([{i,E}|Others], InterfaceChanges, out, Acc)->
+    analyze_input_output_changes_2(Others, InterfaceChanges, out, [{output_field_added, E}|Acc]).
+        
 
 calc_api_dist({Name1, Input1, Output1, Method1}, {Name2, Input2, Output2, Method2}) ->
     NameDist=case Name1==Name2 of 
@@ -146,7 +243,17 @@ calc_api_dist({Name1, Input1, Output1, Method1}, {Name2, Input2, Output2, Method
         length(Input21--Input11),
     OutputDist = length(Output11--Output21) + 
         length(Output21--Output11),
-    {MethodDist, NameDist, InputDist, OutputDist}.
+    {MethodDist, NameDist, InputDist, OutputDist};
+calc_api_dist({Name1, Type1}, {Name2, Type2}) ->
+    NameDist=case Name1==Name2 of 
+                 true -> 0;
+                 _ -> 1
+             end,
+    TypeDist = case Type1==Type2 of 
+               true -> 0;
+               _ -> 1
+           end,
+    {NameDist, TypeDist}.
   
     
 get_element_names(Elems) ->
@@ -212,7 +319,6 @@ get_param_field_names(TypeName, _DataModel=#model{tps =Types}) ->
     Names2 = get_attr_names(Attrs),
     Names1++Names2.
   
-
 rm_prefix(Type) ->
     lists:last(string:tokens(Type, [$:])).
     
@@ -237,11 +343,6 @@ process_interface_operation(_I=#'InterfaceOperationType'{name=Name, choice=Choic
        end,
     {Name, In, Out}.
 
-%% calc_levenshtein_dist(OldTypes, NewTypes) ->
-%%     {Matrix, OldLen, NewLen} = calc_matrix(OldTypes, NewTypes),
-%%     {value, {_, Val}} = lists:keysearch({OldLen, NewLen}, 1, Matrix),
-%%     Val.
-    
 levenshtein_dist(OldTypes, NewTypes) ->
     {Matrix, OldLen, NewLen} = calc_matrix(OldTypes, NewTypes),
     get_edit_ops(Matrix, OldTypes, NewTypes, OldLen, NewLen, []). 
