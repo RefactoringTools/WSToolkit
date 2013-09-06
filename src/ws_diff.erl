@@ -38,6 +38,7 @@
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+%%@private
 test() ->
     ws_diff({"../tests/bookstore_sample/vodkatv_v0.wsdl",
              "../tests/bookstore_sample/vodkatv_v0.xsd"},
@@ -54,13 +55,13 @@ test() ->
 %%      to be evaluated!
 -spec ws_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
-                     {ok, [term()]}|{error, term()}.
+                     {ok, [term()], [term()]}|{error, term()}.
 ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
     {ok, _OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
     {ok, _NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
     APIChanges =levenshtein_dist(OldAPIs, NewAPIs),
     APIChanges1=analyze_api_changes(APIChanges),
-    {ok, APIChanges1}.
+    {ok, APIChanges1, []}.
 
 
 analyze_model(XsdFile, WsdlFile) ->
@@ -121,19 +122,26 @@ analyze_api_changes_2(Changes) ->
     FakeInserts = element(2, lists:unzip(ParaChanges)) ++
         element(2, lists:unzip(Renames)),
     Changes1 = Changes -- FakeInserts,
-    analyze_api_changes_2(Changes1, ParaChanges++Renames, []).
+    analyze_api_changes_2(Changes1, {ParaChanges, Renames}, []).
  
 analyze_api_changes_2([], _InterfaceChanges, Acc) ->
     lists:reverse(Acc);
 analyze_api_changes_2([{'*', _E}|Others], InterfaceChanges, Acc) ->
    analyze_api_changes_2(Others, InterfaceChanges, Acc);
-analyze_api_changes_2([{d, E}|Others], InterfaceChanges, Acc)->
-    case lists:keyfind({d,E}, 1, InterfaceChanges) of 
-        false ->
-            analyze_api_changes_2(Others, InterfaceChanges, [{api_deleted, E}|Acc]);
+analyze_api_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, Acc)->
+    case lists:keyfind({d, E}, 1, ParaChanges) of 
         {{d, E}, {i, E1}} ->
             Res = analyze_input_output_change(E, E1),
-            analyze_api_changes_2(Others, InterfaceChanges, [{api_parameter_changed, E, E1, Res}|Acc])
+            analyze_api_changes_2(Others, InterfaceChanges, [{api_parameter_changed, E, E1, Res}|Acc]);
+        false ->
+            case lists:keyfind({d,E}, 1, Renames) of 
+                {{d, E}, {i, E1}} ->
+                    analyze_api_changes_2(
+                      Others, InterfaceChanges, 
+                      [{api_renamed, E, E1}|Acc]);
+                false ->
+                    analyze_api_changes_2(Others, InterfaceChanges, [{api_deleted, E}|Acc])
+            end
     end;
 analyze_api_changes_2([{i,E}|Others], InterfaceChanges, Acc) ->
     analyze_api_changes_2(Others,  InterfaceChanges, [{api_added, E}|Acc]).
@@ -243,7 +251,7 @@ calc_api_dist({Name1, Input1, Output1, Method1}, {Name2, Input2, Output2, Method
         length(Input21--Input11),
     OutputDist = length(Output11--Output21) + 
         length(Output21--Output11),
-    {MethodDist, NameDist, InputDist, OutputDist};
+    {NameDist, MethodDist, InputDist, OutputDist};
 calc_api_dist({Name1, Type1}, {Name2, Type2}) ->
     NameDist=case Name1==Name2 of 
                  true -> 0;
