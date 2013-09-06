@@ -55,13 +55,13 @@ test() ->
 %%      to be evaluated!
 -spec ws_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
-                     {ok, [term()], [term()]}|{error, term()}.
+                     {ok, [term()]}|{error, term()}.
 ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
     {ok, _OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
     {ok, _NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
     APIChanges =levenshtein_dist(OldAPIs, NewAPIs),
     APIChanges1=analyze_api_changes(APIChanges),
-    {ok, APIChanges1, []}.
+    {ok, APIChanges1}.
 
 
 analyze_model(XsdFile, WsdlFile) ->
@@ -158,7 +158,7 @@ analyze_input_output_change({_APIName1, Input1, Output1, _},
 analyze_input_output_changes(Changes, Type) ->
     Res=analyze_input_output_changes_1(Changes, []),
     analyze_input_output_changes_2(Res, Type).
-
+  
 analyze_input_output_changes_1([], Acc) ->
     lists:reverse(Acc);
 analyze_input_output_changes_1([{'*',E}|Others], Acc) ->
@@ -200,8 +200,8 @@ analyze_input_output_changes_2(Changes, Type) ->
  
 analyze_input_output_changes_2([], _InterfaceChanges, _Type, Acc) ->
     lists:reverse(Acc);
-analyze_input_output_changes_2([{'*', _E}|Others], InterfaceChanges, Type, Acc) ->
-    analyze_input_output_changes_2(Others, InterfaceChanges, Type, Acc);
+analyze_input_output_changes_2([{'*', E}|Others], InterfaceChanges, Type, Acc) ->
+    analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{unchanged, E}|Acc]);
 analyze_input_output_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, Type, Acc) ->
     Changes = ParaChanges++Renames,
     case lists:keyfind({d,E}, 1, Changes) of 
