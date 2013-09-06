@@ -336,19 +336,11 @@ camelCase_to_camel_case_1([H|T], Acc)->
 gen_param_string([]) ->
     "";
 gen_param_string([P]) ->
-    if is_atom(P) ->
-            to_upper(atom_to_list(P));
-       true ->
-            to_upper(P)
-    end;
+    to_upper(atom_to_list(P));
 gen_param_string([H|T]) ->
-    if is_atom(H) ->
-            to_upper(atom_to_list(H))
-                ++", "++gen_param_string(T);
-       true ->
-             to_upper(H)
-                ++", "++gen_param_string(T)
-    end.
+    to_upper(atom_to_list(H))
+        ++", "++gen_param_string(T).
+    
 to_upper([H|T]) -> 
     normalise([string:to_upper(H)|T]).
 
@@ -373,18 +365,10 @@ is_digit(L) -> (L >= 48) and (57 >= L).
 concat_string([]) ->
     "";
 concat_string([P]) ->
-    if is_atom(P) ->
-           atom_to_list(P);
-       true ->
-            P
-    end;
+    P;
 concat_string([H|T]) ->
-    if is_atom(H) ->
-            atom_to_list(H)
-                ++", "++concat_string(T);
-       true ->
-            H++", "++concat_string(T)
-    end.
+    H++", "++concat_string(T).
+
 
 rm_duplicates(Elems) ->
     rm_duplicates_1(Elems, []).

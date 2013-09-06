@@ -79,7 +79,7 @@ test3() ->
                        HrlFile::file:filename()|none,
                        SUT::module_name(),
                        OutFile::file:filename()) ->
-                              ok | {error, Error::term()}.
+                              ok |{error, Error::term()}.
 write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, OutFile) ->
     {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = erlsom:add_xsd_model(Model),
@@ -484,20 +484,10 @@ camelCase_to_camel_case_1([H|T], Acc) ->
 concat_string([]) ->
     "";
 concat_string([P]) ->
-    if is_atom(P) ->
-           atom_to_list(P);
-       true ->
-            P
-    end;
+    P;
 concat_string([H|T]) ->
-    if is_atom(H) ->
-            atom_to_list(H)
-                ++", "++concat_string(T);
-       true ->
-            H++", "++concat_string(T)
-    end.
-
-
+    H++", "++concat_string(T).
+    
 gen_param_string([], _) ->
     "";
 gen_param_string([P], WithUnderScore) ->
