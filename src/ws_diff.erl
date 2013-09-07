@@ -45,14 +45,14 @@ test() ->
             {"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
              "../tests/bookstore_sample/vodkatv.xsd"}).
 
-%%@doc. This funtions tries to infer the API changes between two versions
-%%      of web service specification. It takes the WSDL and XSD specification
-%%      of both versions, and reports what has been changed from the first 
-%%      version to the second version.So far, the changes this tool is able to 
-%%      report include: the adding/removing of WS APIs, renaming of APIs, 
-%%      adding/removing of API parameters, renaming of API parameters, as 
-%%      well as parameter type changes. The accuracy of this tool is still 
-%%      to be evaluated!
+%%@doc This funtions tries to infer the API changes between two versions
+%%     of web service specification. It takes the WSDL and XSD specification
+%%     of both versions, and reports what has been changed from the first 
+%%     version to the second version.So far, the changes this tool is able to 
+%%     report include: the adding/removing of WS APIs, renaming of APIs, 
+%%     adding/removing of API parameters, renaming of API parameters, as 
+%%     well as parameter type changes. The accuracy of this tool is still 
+%%     to be evaluated!
 -spec ws_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
                      {ok, [term()]}|{error, term()}.
