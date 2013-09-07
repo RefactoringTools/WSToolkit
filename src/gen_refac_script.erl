@@ -27,13 +27,13 @@
 %%@author  Huiqing Li <H.Li@kent.ac.uk>
 
 %%% ====================================================================
-%%% Generate the sut.erl file according to a 'model'; to be used with erlsom.
+%%%                   Refactoring script generation.
 %%%
 %%%                    This is only a prototype!
 %% ====================================================================
 -module(gen_refac_script).
 
--export([gen_test_model_refacs/2, gen_composite_refac/3]).
+-export([gen_refac_script/3]).
 
 -export([test/0, test1/0]).
 
@@ -41,20 +41,35 @@
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+%%@private
 test() ->
-    Cmds=gen_test_model_refacs({"../priv/vodkatv_v0.xsd",  "../priv/vodkatv_v0.wsdl"},
-                               {"../priv/vodkatv.xsd",  "../priv/vodkatv_expanded.wsdl"}),
-    gen_composite_refac("vodkatv_sut_gen_0.erl", Cmds, "refac_evolve_api.erl").
-
-
+    gen_refac_script(
+           {"../tests/bookstore_sample/vodkatv_v0.wsdl",
+            "../tests/bookstore_sample/vodkatv_v0.xsd"},
+           {"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
+            "../tests/bookstore_sample/vodkatv.xsd"},
+           "refac_script_test.erl").
+%@private
 test1() ->
-    Cmds=gen_test_model_refacs(
-           {"../priv/vodkatv.xsd",  "../priv/vodkatv_expanded.wsdl"},
-           {"../priv/vodkatv_v0.xsd",  "../priv/vodkatv_v0.wsdl"}),
-    gen_composite_refac("vodkatv_sut_gen.erl", Cmds, "refac_evolve_api.erl").
-
+    gen_refac_script({"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
+                      "../tests/bookstore_sample/vodkatv.xsd"},
+                     {"../tests/bookstore_sample/vodkatv_v0.wsdl",
+                      "../tests/bookstore_sample/vodkatv_v0.xsd"},
+                     "refac_script_test1.erl").
    
-
+%%@doc Infer the API changes between two versions of the web service 
+%%     specification, and generate a refactoring script that can be 
+%%     applied to the existing `eqc_statem' test model. The current 
+%%     implementation ignores type changes.
+-spec gen_refac_script({OldWsdl::file:filename(), Oldxsd::file:filename()},
+                       {NewWsdl::file:filename(), NewXsd::file:filename()},
+                       OutFile::file:filename()) ->
+                              {ok, [term()]}|{error, term()}.
+gen_refac_script({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}, OutFile) ->         
+    {ok, APIChanges} = ws_diff:ws_diff({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}),
+    RefacCmds=gen_refac_cmds(APIChanges, [], []),
+    Content=gen_composite_refac(none, RefacCmds, OutFile),
+    file:write_file(OutFile, list_to_binary(Content)).
 
 gen_composite_refac(TestFile, RefacCmds, OutFile) ->
     Header = gen_header(OutFile),
@@ -77,166 +92,103 @@ gen_composite_refacs(_TestFile, [], Acc)->
         ++append_strs(lists:reverse(Acc))
         ++"                ]).\n\n";
 gen_composite_refacs(TestFile, [{rm_operation, OpName}|Refacs], Acc) ->
-    Str=lists:flatten(io_lib:format("                 {refactoring, rm_operation, [File,\"~s\", [File], 'emacs']}", [OpName])),
+    Str=lists:flatten(io_lib:format("                 {refactoring, rm_operation, [File,\"~s\", [File]]}", [OpName])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{rm_argument, OpName, Index, _ArgName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 {refactoring, rm_op_arg, [File,~s,~p, [File], 'emacs']}", 
+                          "                 {refactoring, rm_op_arg, [File,~p,~p, [File]]}", 
                           [OpName, Index])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
+gen_composite_refacs(TestFile, [{rename_operation, OldOpName, NewOpName}|Refacs], Acc) ->
+    Str = lists:flatten(io_lib:format(
+                          "                 {refactoring, rename_op, [File,~p,~p, [File]]}", 
+                          [OldOpName, NewOpName])),
+    gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
+gen_composite_refacs(TestFile, [{rename_argument, OpName, OldParName, NewParName}|Refacs], Acc) ->
+    Str = lists:flatten(io_lib:format(
+                          "                 {refactoring, rename_op_arg, [File,~p,~p,~p, [File]]}", 
+                          [OpName, OldParName, NewParName])),
+    gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{add_operation, OpName, FieldNames}|Refacs], Acc) ->
-    Str = gen_add_operation_refac_cmd(TestFile, {OpName, FieldNames}),
+    Str=io_lib:format("                 {refactoring, add_operation, [File, ~p,~p, [File]]}",
+                      [OpName, FieldNames]),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{add_argument, OpName, Index, ArgName, _ArgType}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 ?refac_(add_argument, [File,~s,~p,~p])", 
+                          "                 {refactoring, add_argument, [File,~p,~p,~p, [File]]}", 
                           [OpName, Index, ArgName])),
-    gen_composite_refacs(TestFile, Refacs, [Str|Acc]).
+    gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
+gen_composite_refacs(TestFile, [{type_change, _OpName, _ParName,_ParIndex, _ParType}|Refacs], Acc) ->
+    gen_composite_refacs(TestFile, Refacs, Acc).
 
+%% gen_test_model_refacs({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}) ->         
+%%     {ok, APIChanges} = ws_diff:ws_diff({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}),
+%%     {ok, DataModel} = erlsom:compile_xsd_file(XsdFile1),
+%%     gen_refac_cmds(APIChanges, DataModel, []).
 
-gen_add_operation_refac_cmd(_TestFile, {OpName, FieldNames}) ->
-    Args=make_args(FieldNames),
-    GeneratorArgs = make_generators(FieldNames),
-    StateIndex=1,
-    StateCode="next_state(S, _R, {call, ?MODULE, "++OpName++", "++Args++"}) -> S;\n",
-    PreCondIndex=1,
-    PreCondCode="precondition(S, {call, ?MODULE, "++OpName++", "++Args++"})-> true;\n",
-    PostCondIndex=1,
-    PostCondCode="postcondition(S, {call, ?MODULE, "++OpName++", "++Args++"}, Result)-> true;\n",
-    CmdsIndex=1,
-    CmdsCode="{call, ?MODULE, "++OpName++", "++ GeneratorArgs++"},\n",
-    io_lib:format("                 ?refac_(add_operation, [~p,~p,
-                                               ~p,~p,
-                                               ~p,~p,
-                                               ~p,~p])", 
-                  [StateIndex, StateCode, PreCondIndex, PreCondCode, 
-                   PostCondIndex, PostCondCode, CmdsIndex, CmdsCode]).
-    
-gen_test_model_refacs({XsdFile1, WsdlFile1}, {XsdFile2, WsdlFile2}) ->         
-    {{_, {_,TypeChanges}, _}, APIChanges} = ws_diff:ws_diff({XsdFile1, WsdlFile1}, {XsdFile2, WsdlFile2}),
-    {ok, DataModel} = erlsom:compile_xsd_file(XsdFile1),
-    gen_refacs(TypeChanges, APIChanges, DataModel, []).
-
-gen_refacs(_TypeChanges, [], _DataModel,Refacs)->
+gen_refac_cmds([], _DataModel, Refacs) ->
     lists:reverse(lists:flatten(Refacs));
-gen_refacs(TypeChanges, [{'*', _}|Others], DataModel, Refacs) ->
-    gen_refacs(TypeChanges, Others, DataModel, Refacs);
-gen_refacs(TypeChanges, [{d, {APIName, _, _, _, _}}|Others], DataModel, Refacs) ->
+gen_refac_cmds([{'*', _}|Others], DataModel, Refacs) ->
+    gen_refac_cmds(Others, DataModel, Refacs);
+gen_refac_cmds([{api_deleted, {APIName, _, _, _}}|Others], DataModel, Refacs) ->
     APIName1 = camelCase_to_camel_case(APIName),
-    gen_refacs(TypeChanges, Others, DataModel, [[{rm_operation, [APIName1]}]|Refacs]);
-gen_refacs(TypeChanges, [{i, {APIName, InType, OutType, _Method, _URI}}|Others], DataModel, Refacs) ->
-    NewRefac=generate_add_op_refac_cmd(APIName, InType, OutType, DataModel),
-    gen_refacs(TypeChanges, Others, DataModel, [NewRefac|Refacs]);
-gen_refacs(TypeChanges, [{'*!', {APIName, InType, OutType, _Method, _URI}}|Others], DataModel, Refacs) ->
-    NewRefac=generate_interface_refac_cmd(APIName, TypeChanges, InType, OutType),
-    gen_refacs(TypeChanges, Others, DataModel, [NewRefac|Refacs]);
-gen_refacs(TypeChanges, [{s, {APIName1, InType1, OutType1, _Method1, _URI1},
-                          {_APIName2, _InType2, _OutType2, _Method2, _URI2}}
-                         |Others], DataModel, Refacs) ->
-    NewRefac=generate_add_op_refac_cmd(APIName1, InType1, OutType1,DataModel),
-    gen_refacs(TypeChanges, Others, DataModel, [NewRefac|Refacs]).
+    gen_refac_cmds(Others, DataModel, [[{rm_operation, [APIName1]}]|Refacs]);
+gen_refac_cmds([{api_added, {APIName, Input, Output, _Method}}|Others],
+               DataModel, Refacs) ->
+    NewRefac=generate_add_op_refac_cmd(APIName, Input, Output, DataModel),
+    gen_refac_cmds(Others, DataModel, [NewRefac|Refacs]);
+gen_refac_cmds([{api_renamed, {APIName, _InType, _OutType, _Method},
+                              {NewAPIName, _, _, _}}|Others], DataModel, Refacs) ->
+    NewRefac=generate_rename_op_refac_cmd(APIName, NewAPIName),
+    gen_refac_cmds(Others, DataModel, [NewRefac|Refacs]);
+gen_refac_cmds([{api_parameter_changed, _OldInterface={APIName, Input, _, _},
+                 _NewInterface, {ParaChanges, _OutPutChanges}}
+                             |Others], DataModel, Refacs) ->
+    NewRefacs=generate_interface_refac_cmds(APIName,ParaChanges, length(Input)),
+    gen_refac_cmds(Others, DataModel, NewRefacs ++ Refacs).
 
     
-generate_add_op_refac_cmd(APIName, InType, _OutType,DataModel) ->
+generate_add_op_refac_cmd(APIName, InType, _OutType, _DataModel) ->
     APIName1 = camelCase_to_camel_case(APIName),
     FieldNames=
         case lists:member(InType, ["#none", '#none', 'none', "none"]) of 
             true ->
                 [];
             false ->
-                get_param_fields(InType, DataModel)                 
+                [to_upper(atom_to_list(ParName))||{ParName, _Type}<-InType]                 
         end,
     [{add_operation, APIName1, FieldNames}].
-               
-generate_interface_refac_cmd(APIName, TypeChanges, InType, _OutType) ->
+
+generate_rename_op_refac_cmd(OldAPIName, NewAPIName)->           
+    OldAPIName1 = camelCase_to_camel_case(OldAPIName),
+    NewAPIName1 = camelCase_to_camel_case(NewAPIName),
+    [{rename_operation, OldAPIName1, NewAPIName1}].
+
+generate_interface_refac_cmds(APIName, ParaChanges, NumOfArgs) ->
     APIName1 = camelCase_to_camel_case(APIName),
-    case lists:keyfind(InType, 1, TypeChanges) of 
-        false -> [];
-        {InType, ParaChanges} ->
-            generate_interface_refac_cmd_1(APIName1, ParaChanges, 1, [])
-    end.
-    
-generate_interface_refac_cmd_1(_APIName, [], _Index, Acc) ->
-    lists:reverse(Acc);
-generate_interface_refac_cmd_1(APIName, [{'*', {_, _}}|Others], Index, Acc) ->
-    generate_interface_refac_cmd_1(APIName, Others, Index+1, Acc);
-generate_interface_refac_cmd_1(APIName, [{d, {ParName, _Type}}|Others], Index, Acc) ->
-    Cmd = [{rm_argument, APIName, Index, ParName}],
-    generate_interface_refac_cmd_1(APIName, Others, Index, [Cmd|Acc]);
-generate_interface_refac_cmd_1(APIName, [{i, {ParName, Type}}|Others], Index, Acc) ->
-    Cmd = [{add_argument, APIName, Index, ParName, Type}],
-    generate_interface_refac_cmd_1(APIName, Others, Index+1, [Cmd|Acc]);
-generate_interface_refac_cmd_1(APIName, [{s, {ParName, Type}, {ParName1, Type1}}|Others],
-                               Index,Acc) ->
-    case Type == Type1 of 
-        true -> 
-            Cmd=[{rename_var, APIName, ParName, Index, ParName1}],
-            generate_interface_refac_cmd_1(APIName, Others, Index+1, [Cmd|Acc]);
-        false ->
-            case ParName==ParName1 of
-                true ->
-                    Cmd=[{change_type, APIName, ParName, Index, Type1}],
-                    generate_interface_refac_cmd_1(APIName, Others, Index+1, [Cmd|Acc]);
-                false ->
-                    Cmd1 = {rm_argument, APIName, ParName,Index},
-                    Cmd2 = {add_argument, APIName, ParName, Index},
-                    generate_interface_refac_cmd_1(APIName, Others, Index+1, 
-                                                   [[Cmd2, Cmd1]|Acc])
-            end
-    end.
-
-get_param_fields(TypeName, _DataModel=#model{tps = Types}) ->
-    DocType = lists:keyfind('_document', #type.nm,Types),
-    DocAlts = lists:append([E#el.alts||E<-DocType#type.els]),
-    Type=case lists:keyfind(TypeName, #alt.tag, DocAlts) of 
-             false -> TypeName;
-             V -> V#alt.tp
-         end,
-    #type{nm=Type, els=Elems, atts=Attrs}=lists:keyfind(Type, #type.nm, Types),
-    Attrs ++Elems.
-
-get_element_name(#el{alts = Alternatives}) ->
-    [get_element_name_1(Alt)||Alt<-Alternatives].
-    
-%%TODO: need to complete!!!
-get_element_name_1(#alt{tag = Tag, rl = true, tp=_Type, mx=_Max}) ->
-    Tag.
-
-get_attr_name(#att{nm = Name}) ->
-   Name.
-
-make_args(Fs) ->
-    "["++make_args_1(Fs)++"]".
-
-make_args_1([])->
-    "";
-make_args_1([F]) ->
-    get_field_name(F);
-make_args_1([F|Fs]) ->
-    get_field_name(F)++","++make_args_1(Fs).
-
-
-
-make_generators(Fs) ->
-    "["++make_generators_1(Fs)++"]".
-make_generators_1([]) ->
-    "";
-make_generators_1([F]) -> 
-    get_generator_name(F)++"()";
-make_generators_1([F|Fs]) ->
-    get_generator_name(F)++"(),"++make_generators_1(Fs).
-
-get_generator_name(F) ->    
-    FName=case is_record(F, att) of 
-              true->
-                  camelCase_to_camel_case(
-                    atom_to_list(get_attr_name(F)));
-              _ ->
-                  camelCase_to_camel_case(
-                    atom_to_list(hd(get_element_name(F)))) %% assumption here: this is only one alternative.
-          end,
-    "gen_"++FName.
-
+    generate_interface_refac_cmd_1(APIName1, ParaChanges, 1, NumOfArgs, []).
+      
+generate_interface_refac_cmd_1(_APIName, [], _Index, _NumOfArgs, Acc) ->
+    Acc;
+generate_interface_refac_cmd_1(APIName, [{'unchanged', {_, _}}|Others], Index, NumOfArgs, Acc) ->
+    generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, Acc);
+generate_interface_refac_cmd_1(APIName, [{api_parameter_deleted, {ParName, _Type}}|Others], Index, NumOfArgs, Acc) ->
+    Cmd = [{rm_argument, APIName, NumOfArgs-Index+1, ParName}],
+    generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]);
+generate_interface_refac_cmd_1(APIName, [{api_parameter_added, {ParName, Type}}|Others], Index, NumOfArgs, Acc) ->
+    Cmd = [{add_argument, APIName, NumOfArgs-Index+1, to_upper(atom_to_list(ParName)), Type}],
+    generate_interface_refac_cmd_1(APIName, Others, Index, NumOfArgs, [Cmd|Acc]);
+generate_interface_refac_cmd_1(APIName, [{api_parameter_renamed, {ParName, _Type}, {NewParName, _}}|Others], 
+                               Index, NumOfArgs, Acc) ->
+    Cmd = [{rename_argument, APIName, 
+            to_upper(atom_to_list(ParName)),
+                     to_upper(atom_to_list(NewParName))}],
+    generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]);
+generate_interface_refac_cmd_1(APIName, [{api_parameter_type_changed, {ParName, _Type}, {ParName, NewType}}|Others],
+                               Index, NumOfArgs, Acc) ->
+    Cmd=[{type_change, APIName, ParName, Index, NewType}],
+    generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]).
+  
 append_strs([])->
     "";
 append_strs([S]) ->
@@ -245,15 +197,6 @@ append_strs([S|Ss]) when S==""->
     append_strs(Ss);
 append_strs([S|Ss]) ->
     S++",\n"++append_strs(Ss).
-
-
-get_field_name(F) ->    
-    case is_record(F, att) of 
-        true->
-            to_upper(atom_to_list(get_attr_name(F)));
-        _ ->
-            to_upper(atom_to_list(hd(get_element_name(F)))) %% assumption here: this is only one alternative.
-    end.
 
 to_upper([H|T]) -> [string:to_upper(H)|T].
    
