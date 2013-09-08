@@ -38,6 +38,8 @@
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+-compile(export_all).
+
 %%@private
 test() ->
     ws_diff({"../tests/bookstore_sample/vodkatv_v0.wsdl",
@@ -46,7 +48,7 @@ test() ->
              "../tests/bookstore_sample/vodkatv.xsd"}).
 
 %%@doc This funtions tries to infer the API changes between two versions
-%%     of web service specification. It takes the WSDL and XSD specification
+%%     of the web service specification. It takes the WSDL and XSD specification
 %%     of both versions, and reports what has been changed from the first 
 %%     version to the second version.So far, the changes this tool is able to 
 %%     report include: the adding/removing of WS APIs, renaming of APIs, 
@@ -149,40 +151,52 @@ analyze_api_changes_2([{i,E}|Others], InterfaceChanges, Acc) ->
 analyze_input_output_change({_APIName1, Input1, Output1, _}, 
                             {_APIName2, Input2, Output2, _}) ->
     InputChanges =levenshtein_dist(Input1, Input2),
-    InputChanges1 = analyze_input_output_changes(InputChanges, in),
+    InputChanges1 = analyze_input_output_changes(InputChanges, Input1,  in),
     OutputChanges =levenshtein_dist(Output1, Output2),
-    OutputChanges1 = analyze_input_output_changes(OutputChanges, out),
+    OutputChanges1 = analyze_input_output_changes(OutputChanges, Output1, out),
     {InputChanges1,  OutputChanges1}.
                           
 
-analyze_input_output_changes(Changes, Type) ->
-    Res=analyze_input_output_changes_1(Changes, []),
-    analyze_input_output_changes_2(Res, Type).
+analyze_input_output_changes(Changes, Original, Type) ->
+    Changes1=analyze_input_output_changes_0(Changes, []),
+    Changes2=analyze_input_output_changes_1(Changes1,Original,[]),
+    analyze_input_output_changes_2(Changes2, Type).
   
-analyze_input_output_changes_1([], Acc) ->
+
+analyze_input_output_changes_0([], Acc) ->
     lists:reverse(Acc);
-analyze_input_output_changes_1([{'*',E}|Others], Acc) ->
-    analyze_input_output_changes_1(Others, [{'*',E}|Acc]);
-analyze_input_output_changes_1([{i, E}|Others], Acc) ->
+analyze_input_output_changes_0([{s, E1, E2}|Others], Acc) ->
+    analyze_input_output_changes_0([{d, E1}, {i, E2}|Others], Acc);
+analyze_input_output_changes_0([E|Others], Acc) ->
+    analyze_input_output_changes_0(Others, [E|Acc]).
+
+analyze_input_output_changes_1([], _Original, Acc) ->
+    lists:reverse(Acc);
+analyze_input_output_changes_1([{'*',E}|Others], Original, Acc) ->
+    analyze_input_output_changes_1(Others, Original,[{'*',E}|Acc]);
+analyze_input_output_changes_1([{i, E}|Others], Original, Acc) ->
     case lists:member({d, E}, Others) of 
         true ->
-            Others1=lists:keyreplace(E, 2, Others, {'*', E}),
-            analyze_input_output_changes_1(Others1, Acc);
+            Others1 = Others--[{d,E}],
+            Index = length(lists:takewhile(fun(Elem)-> Elem/=E end, Original))+1,
+            analyze_input_output_changes_1(Others1, Original, [{m, E, Index}|Acc]);
         false -> 
-            analyze_input_output_changes_1(Others, [{i, E}|Acc])
+            analyze_input_output_changes_1(Others, Original, [{i, E}|Acc])
     end;
-analyze_input_output_changes_1([{d, E}|Others], Acc) ->
+analyze_input_output_changes_1([{d, E}|Others], Original, Acc) ->
     case lists:member({i, E}, Others) of 
         true ->
-            Others1=lists:keyreplace(E, 2, Others, {'*', E}),
-            analyze_input_output_changes_1(Others1, Acc);
+            Index = length(lists:takewhile(fun(Elem)-> Elem/=E end, Original))+1,
+            Others1=lists:keyreplace(E, 2, Others, {m, E, Index}),
+            analyze_input_output_changes_1(Others1, Original, Acc);
         false -> 
-            analyze_input_output_changes_1(Others, [{d, E}|Acc])
+            analyze_input_output_changes_1(Others, Original, [{d, E}|Acc])
     end;
-analyze_input_output_changes_1([{s, E1, E2}|Others], Acc) ->
-    analyze_input_output_changes_1([{d, E1}, {i, E2}|Others], Acc).
+analyze_input_output_changes_1([{m, E, Index}|Others], Original, Acc) ->
+    analyze_input_output_changes_1(Others, Original, [{m, E, Index}|Acc]);
+analyze_input_output_changes_1([{s, E1, E2}|Others], Original, Acc) ->
+    analyze_input_output_changes_1([{d, E1}, {i, E2}|Others], Original, Acc).
         
-
 
 analyze_input_output_changes_2(Changes, Type) ->
     Deletes = [{d, E}||{d, E}<-Changes],
@@ -202,6 +216,8 @@ analyze_input_output_changes_2([], _InterfaceChanges, _Type, Acc) ->
     lists:reverse(Acc);
 analyze_input_output_changes_2([{'*', E}|Others], InterfaceChanges, Type, Acc) ->
     analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{unchanged, E}|Acc]);
+analyze_input_output_changes_2([{m, E, Index}|Others], InterfaceChanges, Type, Acc) ->
+    analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{moved, E, Index}|Acc]);
 analyze_input_output_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, Type, Acc) ->
     Changes = ParaChanges++Renames,
     case lists:keyfind({d,E}, 1, Changes) of 
@@ -374,7 +390,7 @@ levenshtein_dist(OldParams, NewTypes, OldLen, NewLen, {I, J}, Acc)
   when I>OldLen ->
     levenshtein_dist(OldParams, NewTypes, OldLen, NewLen,  {1, J+1}, Acc);
 levenshtein_dist(OldParams, NewTypes, OldLen, NewLen, {I, J}, Acc) ->
-    Cost = case same(lists:nth(I, OldParams), lists:nth(J, NewTypes)) of
+    Cost = case lists:nth(I, OldParams)==lists:nth(J, NewTypes) of
                true ->
                    0;
                false ->
@@ -401,7 +417,7 @@ get_edit_ops(Matrix, OldParams, NewTypes, I, J, Acc)
 get_edit_ops(Matrix, OldParams, NewTypes, I, J, Acc) ->
     Ith = lists:nth(I, OldParams),
     Jth = lists:nth(J, NewTypes),
-    case same(Ith, Jth) of
+    case Ith==Jth of
         true ->
             get_edit_ops(Matrix, OldParams, NewTypes, I-1, J-1, [{'*', Ith}|Acc]);
         false ->
