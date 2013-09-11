@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:description xmlns:wsdl="http://www.w3.org/ns/wsdl"
+   targetNamespace="http://www.bookstore.org/booklist/wsdl"
+   xmlns:tns="http://www.bookstore.org/booklist/wsdl"
+   xmlns:whttp="http://www.w3.org/ns/wsdl/http"
+   xmlns:wsdlx="http://www.w3.org/ns/wsdl-extensions"
+   xmlns:xs="http://www.w3.org/2001/XMLSchema"
+   xmlns:msg="http://www.bookstore.org/booklist/xsd">
+  <wsdl:documentation>
+     This is a WSDL 2.0 description of a sample bookstore service
+     listing for obtaining book information.
+  </wsdl:documentation>
+
+  <wsdl:types>
+    <schema xmlns="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://www.bookstore.org/booklist/xsd"
+            xmlns:tns="http://www.bookstore.org/booklist/xsd"
+            xmlns:booksvc="http://www.bookstore.org/book/wsdl"
+            xmlns:wsdlx="http://www.w3.org/ns/wsdl-extensions"
+            elementFormDefault="qualified">
+      
+      <element name="getBookList" type="tns:getBookListType">
+  	<annotation>
+  	  <documentation>
+            This request element for the book list service.
+  	  </documentation>
+        </annotation>
+      </element>
+      
+      <element name="bookList" type="tns:bookListType">
+        <annotation>
+          <documentation>
+            The response element for the book list service.
+          </documentation>
+        </annotation>
+      </element>
+      
+      <complexType name="getBookListType">
+        <sequence>
+          <element name="author" type="string" minOccurs="0" maxOccurs="unbounded"/>
+          <element name="title" type="string" minOccurs="0" maxOccurs="1"/>
+      <element name="publisher" type="string" minOccurs="0" maxOccurs="1"/>
+      <element name="subject" type="string" minOccurs="0" maxOccurs="1"/>
+      <element name="language" type="string" minOccurs="0" maxOccurs="unbounded"/>
+        </sequence>
+      </complexType>
+      
+      <complexType name="bookListType">
+        <sequence>
+          <element name="book" type="tns:bookType" minOccurs="0" maxOccurs="unbounded"/>
+        </sequence>
+      </complexType>
+      
+  <complexType name="bookType">
+    <attribute name="title" type="string"/>
+    <attribute name="url" type="anyURI" 
+       wsdlx:interface="booksvc:BookInterface"
+       wsdlx:binding="booksvc:BookHTTPBinding"/>
+  </complexType>
+</schema>
+  </wsdl:types>
+
+  <wsdl:interface name="BookListInterface">
+    <wsdl:operation name="getBookList"
+       pattern="http://www.w3.org/ns/wsdl/in-out"
+       style="http://www.w3.org/ns/wsdl/style/iri" 
+       wsdlx:safe="true">
+      <wsdl:documentation>
+         This operation returns a list of books.
+      </wsdl:documentation>
+      <wsdl:input element="msg:getBookList"/>
+      <wsdl:output element="msg:bookList"/>
+    </wsdl:operation>
+  </wsdl:interface>
+
+  <wsdl:binding name="BookListHTTPBinding"
+     type="http://www.w3.org/ns/wsdl/http"
+     interface="tns:BookListInterface">
+    <wsdl:documentation>
+       The RESTful HTTP binding for the book list service.
+    </wsdl:documentation>
+    <wsdl:operation ref="tns:getBookList" whttp:method="GET"/>
+  </wsdl:binding>
+
+  <wsdl:service name="BookList" interface="tns:BookListInterface">
+    <wsdl:documentation>
+       The bookstore's book list service.
+    </wsdl:documentation>
+    <wsdl:endpoint name="BookListHTTPEndpoint"
+       binding="tns:BookListHTTPBinding"
+       address="http://www.bookstore.com/books/">
+    </wsdl:endpoint>
+  </wsdl:service>
+</wsdl:description>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+   targetNamespace="http://www.bookstore.org/book/xsd"
+   xmlns:tns="http://www.bookstore.org/book/xsd"
+   elementFormDefault="qualified">
+   
+  <element name="book" type="tns:bookType">
+    <annotation>
+      <documentation>
+         The response element for the book service.
+      </documentation>
+    </annotation>
+  </element>
+  
+  <complexType name="bookType">
+    <sequence>
+      <element name="title" type="string"/>
+      <element name="author" type="tns:authorType" minOccurs="1" maxOccurs="10"/>
+      <element name="overview" type="string"/>
+      <element name="pages" type="positiveInteger"/>
+      <element name="publisher" type="string"/>
+      <element name="language" type="string"/>
+      <element name="isbn-10" type="tns:isbn10Type"/>
+      <element name="isbn-13" type="tns:isbn13Type"/>
+      <element name="price" type="decimal"/>
+    </sequence>
+  </complexType>
+
+  <complexType name="authorType">
+    <sequence>
+      <element name="firstName" type="string"/>
+      <element name="lastName" type="string"/>
+    </sequence>
+  </complexType>
+
+  <simpleType name="isbn10Type">
+    <restriction base="integer">
+      <pattern value="\d{10}"/>
+    </restriction>
+  </simpleType>
+
+  <simpleType name="isbn13Type">
+    <restriction base="string">
+      <pattern value="\d{3}\-\d{10}"/>
+    </restriction>
+  </simpleType>
+</schema>
