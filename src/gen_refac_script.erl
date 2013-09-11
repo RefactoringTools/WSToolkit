@@ -44,17 +44,17 @@
 %%@private
 test() ->
     gen_refac_script(
-           {"../tests/bookstore_sample/vodkatv_v0.wsdl",
-            "../tests/bookstore_sample/vodkatv_v0.xsd"},
-           {"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
-            "../tests/bookstore_sample/vodkatv.xsd"},
+           {"../tests/vodkatv_sample/vodkatv_v0.wsdl",
+            "../tests/vodkatv_sample/vodkatv_v0.xsd"},
+           {"../tests/vodkatv_sample/vodkatv_expanded.wsdl", 
+            "../tests/vodkatv_sample/vodkatv.xsd"},
            "refac_script_test.erl").
 %@private
 test1() ->
-    gen_refac_script({"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
-                      "../tests/bookstore_sample/vodkatv.xsd"},
-                     {"../tests/bookstore_sample/vodkatv_v0.wsdl",
-                      "../tests/bookstore_sample/vodkatv_v0.xsd"},
+    gen_refac_script({"../tests/vodkatv_sample/vodkatv_expanded.wsdl", 
+                      "../tests/vodkatv_sample/vodkatv.xsd"},
+                     {"../tests/vodkatv_sample/vodkatv_v0.wsdl",
+                      "../tests/vodkatv_sample/vodkatv_v0.xsd"},
                      "refac_script_test1.erl").
    
 %%@doc Infer the API changes between two versions of the web service 

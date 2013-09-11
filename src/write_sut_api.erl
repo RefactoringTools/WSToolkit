@@ -62,8 +62,8 @@ test2() ->
 test3()->
     write_sut_api(
       none,
-      "../tests/bookstore_sample/vodkatv_v0.wsdl", 
-      "../tests/bookstore_sample/vodkatv_v0.xsd", 
+      "../tests/vodkatv_sample/vodkatv_v0.wsdl", 
+      "../tests/vodkatv_sample/vodkatv_v0.xsd", 
       "http://localhost:8082/vodkatv/",
       "vodkatv_sut.erl").
 

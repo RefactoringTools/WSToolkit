@@ -42,10 +42,10 @@
 
 %%@private
 test() ->
-    ws_diff({"../tests/bookstore_sample/vodkatv_v0.wsdl",
-             "../tests/bookstore_sample/vodkatv_v0.xsd"},
-            {"../tests/bookstore_sample/vodkatv_expanded.wsdl", 
-             "../tests/bookstore_sample/vodkatv.xsd"}).
+    ws_diff({"../tests/vodkatv_sample/vodkatv_v0.wsdl",
+             "../tests/vodkatv_sample/vodkatv_v0.xsd"},
+            {"../tests/vodkatv_sample/vodkatv_expanded.wsdl", 
+             "../tests/vodkatv_sample/vodkatv.xsd"}).
 
 %%@doc This funtions tries to infer the API changes between two versions
 %%     of the web service specification. It takes the WSDL and XSD specification

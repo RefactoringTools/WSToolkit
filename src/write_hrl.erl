@@ -34,15 +34,16 @@
 
 -export([write_hrl_file/2]).
 
--export([test_bookstore/0]).
+-export([test/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 
 %%@private
-test_bookstore() ->
+test() ->
     write_hrl_file("../tests/bookstore_sample/booklist.xsd", "booklist.hrl"),
-    write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
+    write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl"),
+    write_hrl_file("../tests/vodkatv_sample/vodkatv.xsd", "vodkatv.hrl").
 
 %%@doc Generate type definitions. This function takes an .xsd file as input, 
 %%     generates the Erlang representation of types, and write the results to 

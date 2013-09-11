@@ -50,8 +50,8 @@ test2()->
     write_data_generators_to_file("../tests/bookstore_sample/book.xsd", "book.erl").
 %%@private
 test3() ->
-    write_data_generators_to_file("../tests/bookstore_sample/vodkatv.xsd",
-                                  "../tests/bookstore_sample/vodkatv_expanded.wsdl",
+    write_data_generators_to_file("../tests/vodkatv_sample/vodkatv.xsd",
+                                  "../tests/vodkatv_sample/vodkatv_expanded.wsdl",
                                   "vodkatv.erl").
 
 %%@doc. Generates QuickCheck data generators according to the 

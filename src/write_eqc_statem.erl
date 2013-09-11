@@ -63,8 +63,8 @@ test2() ->
 %%@private
 test3() ->
     write_eqc_statem(
-      "../tests/bookstore_sample/vodkatv_expanded.wsdl", 
-      "../tests/bookstore_sample/vodkatv.xsd",
+      "../tests/vodkatv_sample/vodkatv_expanded.wsdl", 
+      "../tests/vodkatv_sample/vodkatv.xsd",
       none, %%"vodkatv.hrl",
       "vaa_sut",
       "test_sut.erl").
