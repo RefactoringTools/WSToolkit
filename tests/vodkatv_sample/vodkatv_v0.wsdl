@@ -1,0 +1,528 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<wsdl:description xmlns:wsdl="http://www.w3.org/ns/wsdl"
+        targetNamespace="http://www.interoud.com/vodkatv/wsdl"
+        xmlns:tns="http://www.interoud.com/vodkatv/wsdl"
+        xmlns:whttp="http://www.w3.org/ns/wsdl/http"
+        xmlns:wsdlx="http://www.w3.org/ns/wsdl-extensions"
+        xmlns:xs="http://www.w3.org/2001/XMLSchema"
+        xmlns:msg="http://www.interoud.com/vodkatv/xsd">
+
+    <wsdl:documentation>
+    WSDL for VoDKATV OSS/BSS API
+    </wsdl:documentation>
+
+    <!--
+    Types
+    -->
+    <wsdl:types>
+      <?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="http://www.interoud.com/vodkatv/xsd"
+        xmlns:tns="http://www.interoud.com/vodkatv/xsd"
+        xmlns:wsdlx="http://www.w3.org/ns/wsdl-extensions">
+
+    <!--
+    Operations
+    -->
+
+    <!-- Room -->
+    <xsd:element name="createRoomParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation CreateRoom.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="createRoomResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation CreateRoom.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="deleteRoomParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation DeleteRoom.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="roomId" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="deleteRoomResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation DeleteRoom.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="room" type="tns:deletedRoom" minOccurs="0" maxOccurs="unbounded" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <!-- Device -->
+    <xsd:element name="createDeviceParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation CreateDevice.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="physicalId" type="xsd:string" />
+                <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="createDeviceResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation CreateDevice.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="id" type="xsd:integer" />
+                <xsd:element name="physicalId" type="xsd:string" />
+                <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="findDevicesParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation FindDevices.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <!-- startIndex: must be greater than 0 -->
+                <xsd:element name="startIndex" type="xsd:integer" />
+                <!-- count: must be greater than 0 -->
+                <xsd:element name="count" type="xsd:integer" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="findDevicesResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation FindDevices.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="device" type="tns:device" minOccurs="0" maxOccurs="unbounded" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="findDevicesByRoomParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation FindDevicesByRoom.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="roomId" type="xsd:string" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="findDevicesByRoomResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation FindDevicesByRoom.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="device" type="tns:device" minOccurs="0" maxOccurs="unbounded" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="findDeviceByIdParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation FindDeviceById.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="deviceId" type="xsd:integer" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="findDeviceByIdResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation FindDeviceById.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="id" type="xsd:integer" />
+                <xsd:element name="physicalId" type="xsd:string" />
+                <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="updateDeviceParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation UpdateDevice.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="id" type="xsd:integer" />
+                <xsd:element name="physicalId" type="xsd:string" />
+                <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="updateDeviceResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation UpdateDevice.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="id" type="xsd:integer" />
+                <xsd:element name="physicalId" type="xsd:string" />
+                <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="roomId" type="xsd:string" />
+                <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="deleteDeviceParams">
+        <xsd:annotation>
+            <xsd:documentation>
+            Params for operation DeleteDevice.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="deviceId" type="xsd:integer" minOccurs="0" maxOccurs="unbounded" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="deleteDeviceResponse">
+        <xsd:annotation>
+            <xsd:documentation>
+            Response of operation DeleteDevice.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="device" type="tns:deletedDevice" minOccurs="0" maxOccurs="unbounded" />
+                <xsd:element name="errors" type="tns:errors" minOccurs="0" maxOccurs="1" />
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+    <!--
+    Entities
+    -->
+    <xsd:complexType name="room">
+        <xsd:sequence>
+            <xsd:element name="roomId" type="xsd:string" />
+            <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="deletedRoom">
+        <xsd:sequence>
+            <xsd:element name="roomId" type="xsd:string" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="devices">
+        <xsd:sequence>
+            <xsd:element name="device" type="tns:device" minOccurs="0" maxOccurs="unbounded" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="devicesToUpdate">
+        <xsd:sequence>
+            <xsd:element name="device" type="tns:deviceToUpdate" minOccurs="0" maxOccurs="unbounded" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="device">
+        <xsd:sequence>
+            <xsd:element name="id" type="xsd:integer" />
+            <xsd:element name="physicalId" type="xsd:string" />
+            <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            <xsd:element name="roomId" type="xsd:string" />
+            <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="deletedDevice">
+        <xsd:sequence>
+            <xsd:element name="id" type="xsd:integer" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="deviceToUpdate">
+        <xsd:sequence>
+            <xsd:element name="id" type="xsd:integer" />
+            <xsd:element name="physicalId" type="xsd:string" />
+            <xsd:element name="deviceClass" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            <xsd:element name="roomId" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <!--
+    Errors
+    -->
+    <xsd:complexType name="errors">
+        <xsd:sequence>
+            <xsd:element name="error" type="tns:error" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="error">
+        <xsd:sequence>
+            <xsd:element name="code" type="xsd:string" />
+            <xsd:element name="params" type="tns:errorParams" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="description" type="xsd:string" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="errorParams">
+        <xsd:sequence>
+            <xsd:element name="param" type="tns:errorParam" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="errorParam">
+        <xsd:attribute name="name" type="xsd:string" />
+        <xsd:attribute name="value" type="xsd:string" />
+    </xsd:complexType>
+    
+  </xsd:schema>
+
+    </wsdl:types>
+
+    <!--
+    Interface
+    -->
+    <wsdl:interface name="VoDKATVInterface">
+
+        <!-- Room -->
+        <wsdl:operation name="CreateRoom"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It creates a new household with the specified values.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:createRoomParams"/>
+            <wsdl:output element="msg:createRoomResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="DeleteRoom"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It deletes an existing household and all their associated devices
+            from the system.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:deleteRoomParams"/>
+            <wsdl:output element="msg:deleteRoomResponse"/>
+        </wsdl:operation>
+
+        <!-- Device -->
+        <wsdl:operation name="CreateDevice"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It creates a new device with the specified values.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:createDeviceParams"/>
+            <wsdl:output element="msg:createDeviceResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="FindDeviceById"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It returns the device with the given identifier.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:findDeviceByIdParams"/>
+            <wsdl:output element="msg:findDeviceByIdResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="FindDevices"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It returns the list of devices filtering by a given criteria.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:findDevicesParams"/>
+            <wsdl:output element="msg:findDevicesResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="FindDevicesByRoom"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It returns a list of the devices from the specified household.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:findDevicesByRoomParams"/>
+            <wsdl:output element="msg:findDevicesByRoomResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="UpdateDevice"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It updates the information associated to an already existing device.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:updateDeviceParams"/>
+            <wsdl:output element="msg:updateDeviceResponse"/>
+        </wsdl:operation>
+
+<!--
+        <wsdl:operation name="DeleteDevice"
+            pattern="http://www.w3.org/ns/wsdl/in-out"
+            style="http://www.w3.org/ns/wsdl/style/iri"
+            wsdlx:safe="true">
+
+            <wsdl:documentation>
+            It deletes an existing device from the system.
+            </wsdl:documentation>
+
+            <wsdl:input element="msg:deleteDeviceParams"/>
+            <wsdl:output element="msg:deleteDeviceResponse"/>
+        </wsdl:operation>
+-->
+    </wsdl:interface>
+
+    <!--
+    Binding
+    -->
+    <wsdl:binding name="VoDKATVHTTPBinding"
+        type="http://www.w3.org/ns/wsdl/http"
+        interface="tns:VoDKATVInterface">
+
+        <wsdl:documentation>
+        HTTP binding for the VoDKATV OSS/BSS service.
+        </wsdl:documentation>
+
+        <!-- Room -->
+        <wsdl:operation ref="tns:CreateRoom" whttp:method="POST"
+                whttp:location="external/admin/configuration/CreateRoom.do"/>
+
+        <wsdl:operation ref="tns:DeleteRoom" whttp:method="GET"
+                whttp:location="external/admin/configuration/DeleteRoom.do"/>
+
+        <!-- Device -->
+        <wsdl:operation ref="tns:CreateDevice" whttp:method="POST"
+                whttp:location="external/admin/configuration/CreateDevice.do"/>
+
+        <wsdl:operation ref="tns:FindDeviceById" whttp:method="GET"
+                whttp:location="external/admin/configuration/FindDeviceById.do"/>
+
+        <wsdl:operation ref="tns:FindDevices" whttp:method="GET"
+                whttp:location="external/admin/configuration/FindDevices.do"/>
+
+        <wsdl:operation ref="tns:FindDevicesByRoom" whttp:method="GET"
+                whttp:location="external/admin/configuration/FindDevicesByRoom.do"/>
+
+        <wsdl:operation ref="tns:UpdateDevice" whttp:method="POST"
+                whttp:location="external/admin/configuration/UpdateDevice.do"/>
+
+        <wsdl:operation ref="tns:DeleteDevice" whttp:method="GET"
+                whttp:location="external/admin/configuration/DeleteDevice.do"/>
+
+    </wsdl:binding>
+
+    <!--
+    Service
+    -->
+    <wsdl:service name="VoDKATV" interface="tns:VoDKATVInterface">
+
+        <wsdl:documentation>
+        VoDKATV OSS/BSS service.
+        </wsdl:documentation>
+
+        <wsdl:endpoint name="VoDKATVHTTPEndpoint"
+            binding="tns:VoDKATVHTTPBinding"
+            address="http://localhost:8082/vodkatv/">
+
+        </wsdl:endpoint>
+
+    </wsdl:service>
+
+</wsdl:description>
