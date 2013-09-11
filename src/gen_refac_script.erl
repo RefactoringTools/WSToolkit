@@ -92,31 +92,36 @@ gen_composite_refacs(_TestFile, [], Acc)->
         ++append_strs(lists:reverse(Acc))
         ++"                ]).\n\n";
 gen_composite_refacs(TestFile, [{rm_operation, OpName}|Refacs], Acc) ->
-    Str=lists:flatten(io_lib:format("                 {refactoring, rm_operation, [File,\"~s\", [File]]}", [OpName])),
+    Str=lists:flatten(io_lib:format("                 ?refac_(refac_rm_op, [File,\"~s\", [File]])", [OpName])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{rm_argument, OpName, Index, _ArgName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 {refactoring, rm_op_arg, [File,~p,~p, [File]]}", 
+                          "                 ?refac_(refac_rm_op_arg, [File,~p,~p, [File]])", 
                           [OpName, Index])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
-gen_composite_refacs(TestFile, [{rename_operation, OldOpName, NewOpName}|Refacs], Acc) ->
+gen_composite_refacs(TestFile, [{rename_operation, OldOpName, Arity, NewOpName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 {refactoring, rename_op, [File,~p,~p, [File]]}", 
-                          [OldOpName, NewOpName])),
+                          "                 ?refac_(refac_rename_fun, [File,{~p,~p}, ~p, [File]])", 
+                          [OldOpName, Arity, NewOpName])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
-gen_composite_refacs(TestFile, [{rename_argument, OpName, OldParName, NewParName}|Refacs], Acc) ->
+gen_composite_refacs(TestFile, [{rename_argument, OpName, Arity, Index, NewParName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 {refactoring, rename_op_arg, [File,~p,~p,~p, [File]]}", 
-                          [OpName, OldParName, NewParName])),
+                          "                 ?refac_(refac_rename_op_arg, [File,~p,~p,~p, ~p, [File]])", 
+                          [OpName, Arity, Index, NewParName])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{add_operation, OpName, FieldNames}|Refacs], Acc) ->
-    Str=io_lib:format("                 {refactoring, add_operation, [File, ~p,~p, [File]]}",
+    Str=io_lib:format("                 ?refac_(refac_add_op, [File, ~p,~p, [File]])",
                       [OpName, FieldNames]),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{add_argument, OpName, Index, ArgName, _ArgType}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 {refactoring, add_argument, [File,~p,~p,~p, [File]]}", 
+                          "                 ?refac_(refac_add_op_arg, [File,~p,~p,~p, [File]])", 
                           [OpName, Index, ArgName])),
+    gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
+gen_composite_refacs(TestFile, [{swap_op_argument, OpName, NewOrder}|Refacs], Acc) ->
+    Str = lists:flatten(io_lib:format(
+                          "                 ?refac_(refac_swap_op_arg, [File,~p,~p,[File]])", 
+                          [OpName, NewOrder])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{type_change, _OpName, _ParName,_ParIndex, _ParType}|Refacs], Acc) ->
     gen_composite_refacs(TestFile, Refacs, Acc).
@@ -137,9 +142,9 @@ gen_refac_cmds([{api_added, {APIName, Input, Output, _Method}}|Others],
                DataModel, Refacs) ->
     NewRefac=generate_add_op_refac_cmd(APIName, Input, Output, DataModel),
     gen_refac_cmds(Others, DataModel, [NewRefac|Refacs]);
-gen_refac_cmds([{api_renamed, {APIName, _InType, _OutType, _Method},
+gen_refac_cmds([{api_renamed, {APIName, InType, _OutType, _Method},
                               {NewAPIName, _, _, _}}|Others], DataModel, Refacs) ->
-    NewRefac=generate_rename_op_refac_cmd(APIName, NewAPIName),
+    NewRefac=generate_rename_op_refac_cmd(APIName, length(InType), NewAPIName),
     gen_refac_cmds(Others, DataModel, [NewRefac|Refacs]);
 gen_refac_cmds([{api_parameter_changed, _OldInterface={APIName, Input, _, _},
                  _NewInterface, {ParaChanges, _OutPutChanges}}
@@ -159,18 +164,36 @@ generate_add_op_refac_cmd(APIName, InType, _OutType, _DataModel) ->
         end,
     [{add_operation, APIName1, FieldNames}].
 
-generate_rename_op_refac_cmd(OldAPIName, NewAPIName)->           
+generate_rename_op_refac_cmd(OldAPIName,  Arity, NewAPIName)->           
     OldAPIName1 = camelCase_to_camel_case(OldAPIName),
     NewAPIName1 = camelCase_to_camel_case(NewAPIName),
-    [{rename_operation, OldAPIName1, NewAPIName1}].
+    [{rename_operation, OldAPIName1, Arity, NewAPIName1}].
 
 generate_interface_refac_cmds(APIName, ParaChanges, NumOfArgs) ->
     APIName1 = camelCase_to_camel_case(APIName),
-    generate_interface_refac_cmd_1(APIName1, ParaChanges, 1, NumOfArgs, []).
+    case lists:keyfind(moved, 1, ParaChanges) of 
+        false ->
+            generate_interface_refac_cmd_1(APIName1, ParaChanges, 1, NumOfArgs, []);
+        _->
+            SwapArgCmd = generte_swap_arg_cmd(APIName1, ParaChanges),
+            Cmds = generate_interface_refac_cmd_1(APIName1, ParaChanges, 1, NumOfArgs, []),
+            [SwapArgCmd|Cmds]
+    end.
       
+generte_swap_arg_cmd(APIName, ParaChanges)->
+    ParaChanges=[C||C<-ParaChanges, element(1, C)/=api_parameter_added],
+    Cs = lists:zip(ParaChanges, lists:seq(1, length(ParaChanges))),
+    NewOrder = [case C of 
+                    {{moved, _, Index},_} -> Index;
+                    {_, Index} -> Index
+                end||C<-Cs],
+    {swap_op_argument, APIName, NewOrder}.
+    
 generate_interface_refac_cmd_1(_APIName, [], _Index, _NumOfArgs, Acc) ->
     Acc;
 generate_interface_refac_cmd_1(APIName, [{'unchanged', {_, _}}|Others], Index, NumOfArgs, Acc) ->
+    generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, Acc);
+generate_interface_refac_cmd_1(APIName, [{'moved', _, _}|Others], Index, NumOfArgs, Acc) ->
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, Acc);
 generate_interface_refac_cmd_1(APIName, [{api_parameter_deleted, {ParName, _Type}}|Others], Index, NumOfArgs, Acc) ->
     Cmd = [{rm_argument, APIName, NumOfArgs-Index+1, ParName}],
@@ -178,11 +201,10 @@ generate_interface_refac_cmd_1(APIName, [{api_parameter_deleted, {ParName, _Type
 generate_interface_refac_cmd_1(APIName, [{api_parameter_added, {ParName, Type}}|Others], Index, NumOfArgs, Acc) ->
     Cmd = [{add_argument, APIName, NumOfArgs-Index+1, to_upper(atom_to_list(ParName)), Type}],
     generate_interface_refac_cmd_1(APIName, Others, Index, NumOfArgs, [Cmd|Acc]);
-generate_interface_refac_cmd_1(APIName, [{api_parameter_renamed, {ParName, _Type}, {NewParName, _}}|Others], 
+generate_interface_refac_cmd_1(APIName, [{api_parameter_renamed, {_ParName, _Type}, {NewParName, _}}|Others], 
                                Index, NumOfArgs, Acc) ->
-    Cmd = [{rename_argument, APIName, 
-            to_upper(atom_to_list(ParName)),
-                     to_upper(atom_to_list(NewParName))}],
+    Cmd = [{rename_argument, APIName, NumOfArgs, Index,  
+            to_upper(atom_to_list(NewParName))}],
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]);
 generate_interface_refac_cmd_1(APIName, [{api_parameter_type_changed, {ParName, _Type}, {ParName, NewType}}|Others],
                                Index, NumOfArgs, Acc) ->
