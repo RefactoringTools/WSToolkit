@@ -35,13 +35,20 @@
          write_data_generators/1,
          write_data_generators/2]).
 
--export([test1/0, test2/0, test3/0]).
+-export([ test1/0, test2/0, test3/0]).
 
+-compile(export_all).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+
+-include_lib("eqc/include/eqc.hrl").
+
+%%@private
+test()->
+    write_data_generators_to_file("../tests/bookstore_sample/complex_example.xsd", "complex.erl").
 %%@private
 test1() ->
     write_data_generators_to_file("../tests/bookstore_sample/booklist.xsd", "booklist.erl").
@@ -92,21 +99,17 @@ write_data_generators_to_file(XsdFile, OutFile) ->
 -spec write_data_generators(XsdFile::file:filename(),
                             WsdlFile::file:filename()|none)
                            -> {ok, string()} | {error, Error::term()}.
-write_data_generators(XsdFile, none) ->
-    Result = erlsom:compile_xsd_file(XsdFile, []),
-    case Result of
-        {ok, Model} ->
-            {ok, write_data_generators_1(Model)};
-        {error, Error} -> 
-            {error, Error}
-    end;
 write_data_generators(XsdFile, WsdlFile) ->
-    Result = erlsom:compile_xsd_file(XsdFile, []),
-    case Result of
+    case gen_xsd_model:gen_xsd_model(XsdFile) of 
         {ok, Model} ->
-            InputDataTypes = get_input_data_types(WsdlFile, Model),
-            {ok, write_data_generators_1(Model, InputDataTypes)};
-        {error, Error} -> 
+            case WsdlFile of 
+                none ->
+                    {ok, write_data_generators_1(Model)};
+                _ ->
+                    InputDataTypes = get_input_data_types(WsdlFile, Model),
+                    {ok, write_data_generators_1(Model, InputDataTypes)}
+            end;
+        {error, Error} ->
             {error, Error}
     end.
 
@@ -127,26 +130,34 @@ write_data_generators_1(#model{tps = Types}) ->
          "%%----------------------------------------------------------\n"
          "%% Data generators\n"
         "%%----------------------------------------------------------\n",
-    Gens=write_data_generators_2(Types, Acc),
-    Gens++util_funs().
+    write_data_generators_2(Types, Acc).
+
 write_data_generators_1(#model{tps = Types},InputDataTypes) ->
     Acc = "%%% Data Generators.\n\n",
     AllInputTypes = get_all_input_types(InputDataTypes, Types), 
-    Gens=write_data_generators_2(AllInputTypes, Acc),
-    Gens++util_funs().
+    write_data_generators_2(AllInputTypes, Acc).
+    
   
 write_data_generators_2(Types, Acc) ->
-    Generators=[write_a_data_generator(T)
+    Generators=[write_a_data_gen(T)
                 ||T<-Types],
     Acc ++ lists:flatten(rm_duplicates(lists:append(Generators))).
         
 
-write_a_data_generator(#type{nm = '_document'}) ->
+write_a_data_gen(#type{nm = '_document'}) ->
     "";
-write_a_data_generator(Type) ->
-    write_a_data_generator_1(Type).
+write_a_data_gen(Type) ->
+    case ws_lib:is_simple_type(Type) of
+        true ->
+            write_a_simple_gen(Type);
+        false ->
+            write_a_complex_gen(Type)
+    end.
+write_a_simple_gen(T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = _Attributes}) ->
+    {_ElemNames, ElemDataGens} = lists:unzip(write_elements(Elements)),
+    ElemDataGens.
 
-write_a_data_generator_1(#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
+write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
     Attrs= write_attributes(Attributes),
     Elems = write_elements(lists:reverse(Elements)),
     {AttrNames, AttrDataGens} = lists:unzip(Attrs),
@@ -179,92 +190,91 @@ write_a_data_generator_1(#type{nm = Name, tp=Type, els = Elements, atts = Attrib
     ComplexGen = Head++Body,
     [ComplexGen|DataGens].
     
-    
-   
+  
 write_elements(Elements)  ->
-  write_elements(Elements, [], 0).
-write_elements([], Acc, _) ->
-  lists:reverse(Acc);
-write_elements([Element | Tail], Acc, CountChoices) ->
-    case write_an_element(Element, CountChoices) of
-        {none, none, CountChoices2} ->
-            write_elements(Tail, Acc, CountChoices2);
-        {Tag, String, CountChoices2} ->
-            write_elements(Tail, [{Tag, String}|Acc], CountChoices2)
+  write_elements(Elements, []).
+write_elements([],Acc) ->
+    lists:reverse(Acc);
+write_elements([Element|Tail], Acc) ->
+    case write_an_element(Element) of
+        {none, none} ->
+            write_elements(Tail, Acc);
+        {Tag, String} ->
+            write_elements(Tail, [{Tag, String}|Acc]);
+        _Others ->
+            write_elements(Tail, Acc)
     end.
 
-write_an_element(#el{alts = Alternatives, mn=_Min, mx=1}, CountChoices)->
-    write_alternatives(Alternatives, CountChoices, false);
-write_an_element(#el{alts = Alternatives, mn=_Min, mx=Max}, CountChoices) 
-  when Max==unbounded->
-    write_alternatives(Alternatives, CountChoices, true);
-write_an_element(#el{alts = Alternatives, mn=_Min, mx=Max}, CountChoices)->
-    if (is_integer(Max) andalso Max >1) ->
-            write_alternatives(Alternatives, CountChoices, Max);
-       true -> 
-            write_alternatives(Alternatives,CountChoices, false)
-    end.
-
+    
+write_an_element(#el{alts = Alternatives, mn=Min, mx=Max})->
+    write_alternatives(Alternatives,{Min, Max}).
 
 %% easy case: 1 alternative (not a choice), 'real' element (not a group)
-write_alternatives([], CountChoices, _List) ->
-    {"any_strict_but_none_defined", CountChoices};  %% ToFix!
-write_alternatives([#alt{tag = '#any'}],CountChoices, List) ->
-    if List ->   
-            {"any :: [any()]\n", CountChoices}; %%TOFIX!!
-       true ->
-            {"any :: any()\n", CountChoices}  %%TOFIX!
-    end;
-write_alternatives([#alt{tag = Tag, rl = true, tp=Type}], 
-                   CountChoices, List) when Tag==Type andalso List==false ->
-    {none, none, CountChoices};
+write_alternatives([], _MinMax) ->
+    {none, none};  %% ToFix!
+write_alternatives([#alt{tag = '#any'}],_MinMax) ->
+    {none, none};
 write_alternatives([_A=#alt{tag = Tag, rl = true, tp=Type}], 
-                   CountChoices, List) ->
-    case List of 
+                   {_Min, Max}) when Tag==Type andalso Max==1 ->
+    {none, none}; %%Checkthis!
+write_alternatives([A=#alt{tag = Tag, tp=_Type}], 
+                   {Min, Max}) ->
+    IsList = (Max == unbounded) orelse (Max>1),
+    case IsList of 
         true ->
             Tag1=list_to_atom(atom_to_list(Tag)++"_list"),
-            {Tag1, write_name_without_prefix(Tag, List) ++
-                 write_a_list_generator(Type)++
-                 ".\n\n", CountChoices};
+            {Tag1, write_name_without_prefix(Tag, IsList) ++
+                 write_a_generator(A, {Min, Max})++
+                 ".\n\n"};
         false ->
-            {Tag, write_name_without_prefix(Tag, List) ++
-                 write_a_generator(Type)++
-                 ".\n\n", CountChoices};
-        Max when is_integer(Max) ->
-            Tag1=list_to_atom(atom_to_list(Tag)++"List"),
-            {Tag1, write_name_without_prefix(Tag, List) ++
-                 write_a_sized_list_generator(Type, Max)++
-                 ".\n\n", CountChoices}
+            {Tag, write_name_without_prefix(Tag, IsList) ++
+                 write_a_generator(A, {Min, Max})++
+                 ".\n\n"}
     end;
-write_alternatives([_A=#alt{tag = Tag, rl = false, tp = Type, mn=Min, mx=Max}],
-                   CountChoices, _List) ->
-    {Tag, write_name_without_prefix(Tag, false)++
-         write_a_generator(Type, Min, Max) 
-     ++ ".\n\n",CountChoices};
 %% more than 1 alternative: a choice
-write_alternatives([#alt{} | _Tail],CountChoices, _List) ->
-    Acc = case CountChoices of
-              0 ->
-                  "choice";
-              _ -> 
-                  "choice" ++ integer_to_list(CountChoices)
-          end,
-  {Acc, CountChoices +1}.
+write_alternatives([#alt{} | _Tail], _List) ->
+    {none, none}. %%TO finished!
 
 write_attributes(Attributes) ->
     [write_an_attribute(A)||A<-Attributes].
 
 write_an_attribute(_A=#att{nm = Name, tp=Type}) ->
     Head ="gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()->",
-    Body = write_a_generator(Type),
+    Body = write_gen(Type, []),
     Code=Head++Body++".\n\n",
     {Name, Code}.
-  
-write_a_generator(Type) ->
-    write_gen(Type).
 
-write_a_generator(Type, _Min, _Max) ->
-    write_gen(Type). %% todo: to take the range into account.
+write_a_generator(A=#alt{}, 
+                  {ElemMin, ElemMax}) ->
+    Gen=write_a_generator_1(A),
+    case {ElemMin, ElemMax} of 
+        {1, 1} ->
+            Gen;
+        {1, unbounded} ->
+            "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
+        {1, ElemMax} when is_integer(ElemMax) ->
+            "eqc_gen:non_empty(eqc_gen:resize("
+                ++integer_to_list(ElemMax)++", eqc_gen:list("++Gen++")))";
+        {0,1}->
+            "eqc_gen:oneof(none, "++Gen++")";
+        {0, unbounded} ->
+            "eqc_gen:list("++Gen++")";
+        {0,ElemMax} when is_integer(ElemMax)->
+            "eqc_gen:resize("
+                ++integer_to_list(ElemMax)++", eqc_gen:list("++Gen++"))"
+    end.
+            
+write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix, anyInfo=Constraints}) 
+  when is_list(Constraints) ->
+    case lists:keyfind(enumerations,1,Constraints) of
+        {enumerations, Enums} ->
+            write_enum_type(Type, Enums);
+        false ->
+            write_gen(Type, Constraints)
+    end;
+write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix}) ->
+    write_gen(Type,[]).
+
 write_name_without_prefix(Name, true) ->
     L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()->"; 
@@ -275,20 +285,63 @@ write_name_without_prefix(Name, _Max) ->
     L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()->".
    
-write_gen(bool) -> "bool()";
-write_gen(integer) -> "int()"; 
-write_gen(float) -> "real()"; 
-write_gen(char) -> "list(char())";
-write_gen({'#PCDATA', char}) ->
-    "list(char())";
-write_gen({'#PCDATA', bool}) ->
-    "bool()";
-write_gen({'#PCDATA', integer}) ->
-    "int()";
-write_gen({'#PCDATA', positiveInteger}) ->
-    "integer(1,inf)";
-write_gen({'#PCDATA', float}) ->
-    "real()";
+write_enum_type(_Type, Enums) ->                         
+    lists:flatten(io_lib:format("eqc_gen:oneof(~p)", [Enums])).
+  
+write_gen({'#PCDATA', bool}, _Constraints) ->
+    "boolean()";
+write_gen({'#PCDATA', char}, []) ->
+     "gen_lib:string()";
+write_gen(char, []) ->
+    "gen_lib:string()";
+write_gen(string, Constraints) ->
+    case lists:keyfind(pattern, 1, Constraints) of 
+        {pattern, Pattern} ->
+            "gen_lib:string("++"\""++Pattern++"\")";
+        false ->
+            {MinLen, MaxLen}=
+                case lists:keyfind(length, 1, Constraints) of
+                    {length, Len} ->
+                       {Len, Len};
+                    false ->
+                        case lists:keyfind(max_length, 1, Constraints) of
+                            {max_length, Max} ->
+                                case lists:keyfind(min_length, 1, Constraints) of 
+                                    {min_length, Min} ->
+                                        {Min, Max};
+                                    false ->
+                                        {1, Max}
+                                end;
+                            false ->
+                                case lists:keyfind(min_length, 1, Constraints) of 
+                                    {min_length, Min} ->
+                                        {Min, inf};
+                                    false ->
+                                        {1, inf}
+                                end
+                        end
+                end,
+            case {MinLen, MaxLen} of 
+                {1, inf} -> "gen_lib:string()";
+                _ ->
+                    lists:flatten(
+                      io_lib:format(
+                        "gen_lib:string(~p,~p)", [MinLen, MaxLen]))
+            end
+    end;  
+write_gen(Type, Constraints) ->
+    case is_numeric_type(Type) of 
+        true->
+            case Type of 
+                {'#PCDATA', Type1}->
+                    gen_numeric(Type1, Constraints);
+                _ ->
+                    gen_numeric(Type, Constraints)
+            end;
+        false ->
+            write_gen(Type)
+    end.
+
 write_gen(TypeName) when is_list(TypeName) ->
     "gen_"++camelCase_to_camel_case(TypeName)++"()";
 write_gen(TypeName)when is_atom(TypeName) ->
@@ -296,12 +349,115 @@ write_gen(TypeName)when is_atom(TypeName) ->
 write_gen(_TypeName)->
     "string()".   %% need to be fixed.
 
+is_numeric_type({'#PCDATA', Type}) ->
+    is_numeric_type(Type);
+is_numeric_type(Type) ->
+    lists:member(
+      Type,element(1,lists:unzip(numeric_types()))).
+
+numeric_types() ->
+    [{decimal, {inf, inf}},
+     {float,   {inf, inf}},
+     {integer, {inf, inf}},
+     {positiveInteger,{1, inf}},
+     {negativeInteger,{inf, -1}},
+     {int, {-1 bsl 31, 1 bsl 31-1}},
+     {long,{-1 bsl 63, 1 bsl 63-1}},
+     {short,{-1 bsl 15, 1 bsl 15-1}},
+     {nonNegativeInteger,{0, inf}},
+     {nonPositiveInteger,{inf, 0}},
+     {unsignedLong, {0,1 bsl 64-1}},
+     {unsignedInt, {0,1 bsl 32-1}},
+     {unsignedShort,{0,1 bsl 16-1}},
+     {unsignedByte,{0,1 bsl 8-1}}].
+            
+gen_numeric(Type, Constraints) ->
+    case lists:keyfind(pattern, 1, Constraints) of 
+        {pattern, Pattern} ->
+            "gen_lib:integer("++"\""++Pattern++"\")";
+        false ->
+            LowerBound=case lists:keyfind(min_inclusive, 1, Constraints) of 
+                         {min_inclusive, Min} ->
+                             {min_inclusive, Min};
+                         false ->
+                             case lists:keyfind(min_exclusive, 1, Constraints) of 
+                                 {min_exclusive, Min} ->
+                                     {min_exclusive, Min};
+                                 false ->
+                                     inf
+                             end
+                       end,
+            UpperBound=case lists:keyfind(max_inclusive, 1, Constraints) of 
+                         {max_inclusive, Max} ->
+                               {max_inclusive, Max};
+                           false ->
+                             case lists:keyfind(max_exclusive, 1, Constraints) of 
+                                 {max_exclusive, Max} ->
+                                     {max_exclusive, Max};
+                                 false ->
+                                     inf
+                             end
+                       end,
+            gen_numeric_1(Type, {LowerBound, UpperBound})
+    end.
+            
+gen_numeric_1(decimal, {_LowerBound, _UpperBound}) ->
+    "eqc_gen:float()";
+gen_numeric_1(float, {_LowerBound, _UpperBound}) ->
+    "eqc_gen:float()";
+gen_numeric_1(double, {_LowerBound, _UpperBound}) ->
+    "eqc_gen:float()";
+gen_numeric_1(Type, {LowerBound, UpperBound}) ->
+    NewLower = get_new_lower(Type, LowerBound),
+    NewUpper = get_new_upper(Type, UpperBound),
+    lists:flatten(
+      io_lib:format(
+        "gen_lib:integer(~p,~p)", [NewLower, NewUpper])).
+
+
+get_new_lower(Type, LowerBound) ->
+    {Type, {L,_U}}=lists:keyfind(Type, 1, numeric_types()),
+    case LowerBound of 
+        {min_inclusive, M} ->
+            case L of 
+                inf -> M;
+                _ ->
+                    lists:max([M, L])
+            end;
+        {min_exclusive, M1} ->
+            case L of 
+                inf -> M1+1;
+                _ ->
+                    lists:max([M1+1, L])
+            end;
+        inf ->
+            L
+    end.            
+get_new_upper(Type, UpperBound) ->
+    {Type, {_L,U}}=lists:keyfind(Type, 1, numeric_types()),
+    case UpperBound of 
+        {max_inclusive, M} ->
+            case U of 
+                inf -> M;
+                _ ->
+                    lists:min([M, U])
+            end;
+        {max_exclusive, M1} ->
+            case U of 
+                inf -> M1-1;
+                _ ->
+                    lists:min([M1-1, U])
+            end;
+        inf ->
+            U
+    end.  
+    
 write_a_list_generator(Type) ->
-    "list("++write_a_generator(Type)++")".
+    "list("++write_a_generator(Type, {1, 1})++")".
   
 write_a_sized_list_generator(Type, Size) ->
     "?SIZED("++integer_to_list(Size)++", list("++
-        write_a_generator(Type)++"))".
+        write_a_generator(Type, {1, 1})++"))".
 
 %% transform camelCase atom to camel_case.
 %%-spec(camelCase_to_camel_case(Name::string()) ->string()).
@@ -382,15 +538,6 @@ rm_duplicates_1([E|Elems], Acc) ->
         false ->
             rm_duplicates_1(Elems, [E|Acc])
     end.
-util_funs() ->
-    "integer(inf, inf) ->\n"
-    "    int();\n"
-    "integer(Min, inf) ->\n"
-    "    ?SUCHTHAT(I, int(), I>=Min);\n"
-    "integer(inf, Max) ->\n"
-    "    ?SUCHTHAT(I, int(), I=<Max);\n"
-    "integer(Min, Max) ->\n"
-    "    ?SUCHTHAT(I, int(), I>=Min andalso I=<Max).\n".
 
 get_input_data_types(WsdlFile, Model) ->
     {ok, Model1} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),

@@ -85,19 +85,13 @@ write_type_defs(Types, AllTypes, Acc) ->
 write_a_type_def(#type{nm = '_document'}, _AllTypes) ->
     {'_document', "", []};
 write_a_type_def(Type=#type{anyAttr=Attrs}, AllTypes)->
-    case Attrs of
-        undefined ->
-            write_a_record_type(Type, AllTypes);
-        _ when is_list(Attrs)->
-            case lists:keyfind(is_simple_type,1, Attrs) of
-                {is_simple_type, true} ->
-                    write_a_type_type(Type, AllTypes);
-                _ ->
-                    write_a_record_type(Type, AllTypes)
-            end;
-        _ -> write_a_record_type(Type, AllTypes)
+    case ws_lib:is_simple_type(Type) of 
+        true ->
+            write_a_type_type(Type, AllTypes);
+        false ->
+             write_a_record_type(Type, AllTypes)
     end.
-        
+
 %% a simple type.         
 write_a_type_type(_T=#type{nm = Name, els = Elements, mn=Min, mx=Max,atts = _Attributes}, AllTypes) ->
     [#el{alts =[Alt], mn=Min, mx=Max}]=Elements,

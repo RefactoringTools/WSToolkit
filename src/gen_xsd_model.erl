@@ -241,9 +241,9 @@ update_simple_type_info_in_model(Model, Name0)->
     Name = list_to_atom(Name0),
     Types=Model#model.tps,
     NewTypes=[case T#type.nm==Name of 
-         true -> T#type{anyAttr=[{is_simple_type, true}]};
-         false -> T
-     end||T<-Types],
+                  true -> T#type{anyAttr=[{is_simple_type, true}]};
+                  false -> T
+              end||T<-Types],
     Model#model{tps=NewTypes}.
          
 update_base_type_info_in_model(Model, Name0, BaseType) ->
