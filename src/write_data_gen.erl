@@ -47,16 +47,24 @@
 -include_lib("eqc/include/eqc.hrl").
 
 %%@private
-test()->
-    write_data_generators_to_file("../tests/bookstore_sample/complex_example.xsd", "complex.erl").
+test0()->
+    write_data_generators_to_file("../tests/convert_cooking/ConvertCooking.xsd", 
+                                  "convert_cooking.erl").
+
 %%@private
-test1() ->
-    write_data_generators_to_file("../tests/bookstore_sample/booklist.xsd", "booklist.erl").
+test1()->
+    write_data_generators_to_file("../tests/bookstore_sample/complex_example.xsd", 
+                                  "complex.erl").
 %%@private
-test2()->
-    write_data_generators_to_file("../tests/bookstore_sample/book.xsd", "book.erl").
+test2() ->
+    write_data_generators_to_file("../tests/bookstore_sample/booklist.xsd", 
+                                  "booklist.erl").
 %%@private
-test3() ->
+test3()->
+    write_data_generators_to_file("../tests/bookstore_sample/book.xsd",
+                                  "book.erl").
+%%@private
+test4() ->
     write_data_generators_to_file("../tests/vodkatv_sample/vodkatv.xsd",
                                   "../tests/vodkatv_sample/vodkatv_expanded.wsdl",
                                   "vodkatv.erl").
@@ -102,6 +110,7 @@ write_data_generators_to_file(XsdFile, OutFile) ->
 write_data_generators(XsdFile, WsdlFile) ->
     case gen_xsd_model:gen_xsd_model(XsdFile) of 
         {ok, Model} ->
+            io:format("Model:~p\n", [Model]),
             case WsdlFile of 
                 none ->
                     {ok, write_data_generators_1(Model)};
@@ -153,16 +162,17 @@ write_a_data_gen(Type) ->
         false ->
             write_a_complex_gen(Type)
     end.
-write_a_simple_gen(T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = _Attributes}) ->
+write_a_simple_gen(_T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = _Attributes}) ->
     {_ElemNames, ElemDataGens} = lists:unzip(write_elements(Elements)),
     ElemDataGens.
 
-write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
+write_a_complex_gen(T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
+    io:format("T:~p\n", [T]),
     Attrs= write_attributes(Attributes),
     Elems = write_elements(lists:reverse(Elements)),
     {AttrNames, AttrDataGens} = lists:unzip(Attrs),
     {ElemNames, ElemDataGens} = lists:unzip(Elems),
-    Head = "gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()->",
+    Head = "gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()",
     DataGens = lists:reverse(AttrDataGens)++
         lists:reverse(ElemDataGens),
     Body=case Type of 
@@ -174,9 +184,8 @@ write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attribut
                  "\n   {"++AttrGenStr++", oneof("++ElemGenStr++")}.\n\n";                 
              _ ->case length(Attrs++Elems) of 
                      1->
-                         GenStr=concat_string(["gen_"++camelCase_to_camel_case(N)++"()"
-                                               ||N<-AttrNames++ElemNames]),
-                         GenStr++".\n\n";
+                         concat_string(["gen_"++camelCase_to_camel_case(N)++"()"
+                                        ||N<-AttrNames++ElemNames]);
                      _ ->
                          FieldNames = lists:reverse(AttrNames++ElemNames),
                          GenStr=concat_string(["gen_"++camelCase_to_camel_case(N)++"()"
@@ -184,11 +193,15 @@ write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attribut
                          Fields=gen_param_string(FieldNames),
                          "\n   ?LET({"++Fields++"},\n"++
                              "        {"++GenStr++"},\n"++
-                             "        {"++Fields++"}).\n\n"
+                             "        {"++Fields++"})"
                  end
          end,
-    ComplexGen = Head++Body,
-    [ComplexGen|DataGens].
+    ComplexGen = Head++"->"++Body++".\n\n",
+    case Head==Body of 
+        true -> DataGens;
+        _ ->
+            [ComplexGen|DataGens]
+    end.
     
   
 write_elements(Elements)  ->
@@ -359,6 +372,7 @@ numeric_types() ->
     [{decimal, {inf, inf}},
      {float,   {inf, inf}},
      {integer, {inf, inf}},
+     {double,  {inf, inf}},
      {positiveInteger,{1, inf}},
      {negativeInteger,{inf, -1}},
      {int, {-1 bsl 31, 1 bsl 31-1}},
