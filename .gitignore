@@ -1,0 +1,9 @@
+Makefile
+config.log
+config.status
+autom4te.cache
+*.beam
+*.dat
+*.txt
+*~
+*.swp
