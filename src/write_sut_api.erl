@@ -32,13 +32,23 @@
 
 -export([write_sut_api/5]).
 
--export([test1/0,
+-export([test0/0,
+         test1/0,
          test2/0,
          test3/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
+
+%%@private
+test0() ->
+    write_sut_api(
+      none,
+      "../tests/weather/weather.wsdl", 
+      "../tests/weather/weather.xsd",
+      "http://www.webservicex.net/globalweather.asmx",
+      "weather_sut.erl").
 
 %%@private
 test1() ->
@@ -120,42 +130,53 @@ gen_sut_funs_1({APIName, Param, Response}, APIBindings, DataModel) ->
     {APIName, Method, URI} = lists:keyfind(APIName, 1, APIBindings),
     APIName1=camelCase_to_camel_case(APIName),
     ResponseRecordName=lists:last(string:tokens(Response, [$:])),
+    ResponseRecordStr = case ws_lib:is_upper(hd(ResponseRecordName)) of 
+                            true -> "'"++ResponseRecordName++"'";
+                            false -> ResponseRecordName
+                        end,
     case Method of 
         "POST" ->
             ParaRecordName = lists:last(string:tokens(Param, [$:])),
+            ParaRecordStr=case ws_lib:is_upper(hd(ParaRecordName)) of 
+                              true -> "'"++ParaRecordName++"'";
+                              false -> ParaRecordName
+                          end,
             FieldNames = get_param_field_names(list_to_atom(ParaRecordName), DataModel),
             Params = gen_param_string(FieldNames),
             Def=APIName1 ++ "(" ++ Params ++ ")->\n" ++
-               "    PostData = generate_post_params(" ++ ParaRecordName
-              ++ ", [" ++ Params ++ "]),\n"
+                "    PostData = generate_post_params(" ++ ParaRecordStr
+                ++ ", [" ++ Params ++ "]),\n"
                 "    Url = ?BASE_URL++\"" ++ URI ++ "\",\n"
                 "    http_request('" ++ Method ++ "', Url, PostData,\n"
                 "                  fun(Data) -> \n"
-                "                      process_response(" ++ ResponseRecordName ++ ", Data)\n"
+                "                      process_response(" ++ ResponseRecordStr ++ ", Data)\n"
                 "                  end).\n\n",
             {Def, {list_to_atom(APIName1), length(FieldNames)}};
         "GET" ->
             case lists:member(Param, ["#none", '#none', 'none', "none"]) of 
                 true ->
-                    %% Spec = gen_type_spec(APIName1,  none, ResponseRecordName),
                     Def=APIName1++"()->\n" ++
                         "    Url = ?BASE_URL++\"" ++ URI ++"\",\n"
                         "    http_request('"++Method++"', Url,\n"
                         "                  fun(Data) -> \n"
-                        "                       process_response("++ResponseRecordName++", Data)\n"
+                        "                       process_response("++ResponseRecordStr++", Data)\n"
                         "                  end).\n\n",
                     {Def, {list_to_atom(APIName1),0}};
                 _ ->
                     ParaRecordName = lists:last(string:tokens(Param, [$:])),
                     FieldNames = get_param_field_names(list_to_atom(ParaRecordName), DataModel),
+                    ParaRecordStr=case ws_lib:is_upper(hd(ParaRecordName)) of 
+                                true -> "'"++ParaRecordName++"'";
+                                false -> ParaRecordName
+                            end,
                     Params = gen_param_string(FieldNames),
                     Def=APIName1 ++ "(" ++ Params ++ ")->\n" ++
-                        "    GetParams = generate_get_params(" ++ ParaRecordName
+                        "    GetParams = generate_get_params(" ++ ParaRecordStr
                         ++ ", [" ++ Params ++ "]),\n"
                         "    Url = add_get_params(?BASE_URL++\"" ++ URI ++ "\",GetParams),\n"
                         "    http_request('" ++ Method ++ "', Url,\n"
                         "                  fun(Data) -> \n"
-                        "                      process_response("++ResponseRecordName++", Data)\n"
+                        "                      process_response("++ResponseRecordStr++", Data)\n"
                         "                  end).\n\n",
                     {Def, {list_to_atom(APIName1), length(FieldNames)}}
             end
@@ -404,3 +425,6 @@ gen_params()->
 
 
 
+%% httpc:request(get, {"http://www.webservicex.net/globalweather.asmx/GetCitiesByCountry?CountryName=\"US\"",[]}, [], []).  
+
+ %% httpc:request(get, {"http://www.webservicex.net/globalweather.asmx/GetWeather?CityName=Weipa&CountryName=Australia",[]}, [], []).
