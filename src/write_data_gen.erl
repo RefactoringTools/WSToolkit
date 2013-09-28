@@ -48,8 +48,9 @@
 
 %%@private
 test0()->
-    write_data_generators_to_file("../tests/convert_cooking/ConvertCooking.xsd", 
-                                  "convert_cooking.erl").
+    write_data_generators_to_file("../tests/weather/weather.xsd",
+                                  "../tests/weather/weather.wsdlrr",
+                                  "weather.erl").
 
 %%@private
 test1()->
@@ -269,7 +270,7 @@ write_a_generator(A=#alt{},
             "eqc_gen:non_empty(eqc_gen:resize("
                 ++integer_to_list(ElemMax)++", eqc_gen:list("++Gen++")))";
         {0,1}->
-            "eqc_gen:oneof(none, "++Gen++")";
+            "eqc_gen:oneof([none, "++Gen++"])";
         {0, unbounded} ->
             "eqc_gen:list("++Gen++")";
         {0,ElemMax} when is_integer(ElemMax)->
@@ -515,21 +516,14 @@ to_upper([H|T]) ->
     normalise([string:to_upper(H)|T]).
 
 normalise([H|T]) ->
-    case   (is_upper(H) or is_lower(H) or 
-            is_digit(H) or (H == 64) or (H == 95)) of
+    case (ws_lib:is_upper(H) or ws_lib:is_lower(H) or
+           ws_lib:is_digit(H) or (H == 64) or (H == 95)) of
         true ->
             [H|normalise(T)];
         false ->
             [95|normalise(T)]
     end;
 normalise([]) ->[].
-
-
-is_upper(L) -> (L >= 65) and (90 >= L).
-
-is_lower(L) -> (L >= 97) and (122 >= L).
-
-is_digit(L) -> (L >= 48) and (57 >= L).
 
 
 concat_string([]) ->
