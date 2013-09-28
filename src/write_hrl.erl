@@ -41,12 +41,13 @@
 
 %%@private
 test() ->
+    write_hrl_file("../tests/weather/weather.xsd", "weather.hrl").
    %% write_hrl_file("../tests/bookstore_sample/booklist.xsd", "booklist.hrl").
    %% write_hrl_file("../tests/bookstore_sample/person.xsd", "person.hrl").
-   %%  write_hrl_file("../tests/bookstore_sample/complex_example.xsd", "complex_example.hrl").
+   %% write_hrl_file("../tests/bookstore_sample/complex_example.xsd", "complex_example.hrl").
    %% write_hrl_file("../tests/bookstore_sample/extension.xsd", "extension.erl"). %% does not work.
    %% write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
-    write_hrl_file("../tests/vodkatv_sample/vodkatv.xsd", "vodkatv.hrl").
+   %% write_hrl_file("../tests/vodkatv_sample/vodkatv.xsd", "vodkatv.hrl").
 
 %%@doc Generate type definitions. This function takes an .xsd file as input, 
 %%     generates the Erlang representation of types, and write the results to 
@@ -84,7 +85,7 @@ write_type_defs(Types, AllTypes, Acc) ->
 
 write_a_type_def(#type{nm = '_document'}, _AllTypes) ->
     {'_document', "", []};
-write_a_type_def(Type=#type{anyAttr=Attrs}, AllTypes)->
+write_a_type_def(Type, AllTypes)->
     case ws_lib:is_simple_type(Type) of 
         true ->
             write_a_type_type(Type, AllTypes);
@@ -172,7 +173,7 @@ alternative_dep_types(_, _) ->
 write_attributes(Attributes, AllTypes) ->
   [writeAttribute(A, AllTypes)||A<-Attributes].
               
-writeAttribute(A=#att{nm = Name, tp=Type}, AllTypes) -> 
+writeAttribute(_A=#att{nm = Name, tp=Type}, AllTypes) -> 
     TypeDef=write_name(Name) ++"::"++ 
         write_type(Type, undefined, AllTypes),
     {TypeDef, ""}.
@@ -223,7 +224,7 @@ write_alt_type(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix, anyInfo=Constraints},
                     write_type(Type, Constraints, AllTypes)
             end,
     {TypeDef, Comments};
-write_alt_type(A=#alt{tag =_Tag, tp=T, anyInfo=Constraints},  {Min, Max}, AllTypes)->
+write_alt_type(_A=#alt{tag =_Tag, tp=T, anyInfo=Constraints},  {Min, Max}, AllTypes)->
     Type=write_type(T, Constraints, AllTypes),
     case {Min, Max} of  %% Min, Max are from elements attributed.
         {1, 1} ->
