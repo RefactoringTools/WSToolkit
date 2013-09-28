@@ -53,5 +53,8 @@ is_simple_type(#type{anyAttr=Attrs})->
             false
     end.
              
-                    
-        
+is_upper(L) -> (L >= 65) and (90 >= L).
+
+is_lower(L) -> (L >= 97) and (122 >= L).
+
+is_digit(L) -> (L >= 48) and (57 >= L).
