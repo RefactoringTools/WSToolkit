@@ -33,7 +33,7 @@
 
 -export([write_eqc_statem/5]).
 
--export([test1/0, test2/0, test3/0]).
+-export([test0/0, test1/0, test2/0, test3/0]).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
@@ -41,6 +41,15 @@
 
 -type module_name()::atom().
 
+
+%%@private
+test0() ->
+    write_eqc_statem(
+      "../tests/weather/weather.wsdl", 
+      "../tests/weather/weather.xsd",
+      none,
+      "weather_sut.erl",
+      "weather_test.erl").
 
 %%@private
 test1() ->
@@ -221,8 +230,8 @@ gen_a_postcondition({APIName, ParamType, _Response}, DataModel)->
                        FieldNames = get_param_field_names(ParamName, DataModel),
                        gen_param_string(FieldNames, true)
                end,
-    "postcondition(_S, {call, ?MODULE, "++APIName1 ++ ", ["++ParamStr++"]}, _Result)->\n"
-    "    true".
+    "postcondition(_S, {call, ?MODULE, "++APIName1 ++ ", ["++ParamStr++"]}, Result)->\n"
+    "    Result /='response_data_does_not_conform_to_model'".
 
 
 gen_adaptor_funs([], _, Acc)->
