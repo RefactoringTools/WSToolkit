@@ -111,7 +111,6 @@ write_data_generators_to_file(XsdFile, OutFile) ->
 write_data_generators(XsdFile, WsdlFile) ->
     case gen_xsd_model:gen_xsd_model(XsdFile) of 
         {ok, Model} ->
-            io:format("Model:~p\n", [Model]),
             case WsdlFile of 
                 none ->
                     {ok, write_data_generators_1(Model)};
@@ -168,7 +167,6 @@ write_a_simple_gen(_T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = 
     ElemDataGens.
 
 write_a_complex_gen(T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
-    io:format("T:~p\n", [T]),
     Attrs= write_attributes(Attributes),
     Elems = write_elements(lists:reverse(Elements)),
     {AttrNames, AttrDataGens} = lists:unzip(Attrs),
