@@ -42,7 +42,7 @@
 
 %%@private
 test()->
-    gen_xsd_model("../tests/bookstore_sample/extension.xsd").
+    gen_xsd_model("../tests/weather/weather.xsd").
 %%@private
 test1() ->
     gen_xsd_model("../tests/bookstore_sample/book.xsd").
