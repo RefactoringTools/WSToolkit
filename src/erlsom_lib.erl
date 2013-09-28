@@ -190,21 +190,23 @@ nameWithoutPrefix([], Acc) ->
 
 translateType(String) ->
     case String of
-      "integer" ->
-          'integer';
-      "int" ->
-          'integer';
-      "QName" ->
-          'qname';
-      "boolean" ->
-          'bool';
-      "positiveInteger" ->   %%added by HL;
-          'positiveInteger'; 
-      "decimal" ->
-          'float';   %%added by HL;
-      _Else ->
-          'char' 
-  end.
+        "integer" ->
+            'integer';
+        "int" ->
+            'integer';
+        "QName" ->
+            'qname';
+        "boolean" ->
+            'bool';
+        "positiveInteger" ->   %%added by HL;
+            'positiveInteger'; 
+        "decimal" ->
+            'decimal';   %%added by HL;
+        "double" ->
+            'double';
+        _Else ->
+            'char' 
+    end.
 
 
 findPrefix(undefined, _Namespaces) ->
