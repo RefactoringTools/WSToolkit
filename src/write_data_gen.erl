@@ -166,7 +166,7 @@ write_a_simple_gen(_T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = 
     {_ElemNames, ElemDataGens} = lists:unzip(write_elements(Elements)),
     ElemDataGens.
 
-write_a_complex_gen(T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
+write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
     Attrs= write_attributes(Attributes),
     Elems = write_elements(lists:reverse(Elements)),
     {AttrNames, AttrDataGens} = lists:unzip(Attrs),
@@ -264,12 +264,16 @@ write_a_generator(A=#alt{},
             Gen;
         {1, unbounded} ->
             "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
+        {1, unbound} ->
+            "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
         {1, ElemMax} when is_integer(ElemMax) ->
             "eqc_gen:non_empty(eqc_gen:resize("
                 ++integer_to_list(ElemMax)++", eqc_gen:list("++Gen++")))";
         {0,1}->
             "eqc_gen:oneof([none, "++Gen++"])";
         {0, unbounded} ->
+            "eqc_gen:list("++Gen++")";
+        {0, unbound} ->
             "eqc_gen:list("++Gen++")";
         {0,ElemMax} when is_integer(ElemMax)->
             "eqc_gen:resize("
