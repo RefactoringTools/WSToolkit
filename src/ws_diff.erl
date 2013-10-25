@@ -72,7 +72,7 @@ analyze_model(XsdFile, WsdlFile) ->
     Result=erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
-            {ok, DataModel} = erlsom:compile_xsd_file(XsdFile),
+            {ok, DataModel} = gen_xsd_model:gen_xsd_model(XsdFile),
             #model{tps=Types0} = DataModel,
             Types =[T||T<-Types0, T#type.nm/='_document'],
             Choice = Res#'DescriptionType'.choice, 
@@ -280,23 +280,28 @@ calc_api_dist({Name1, Type1}, {Name2, Type2}) ->
     {NameDist, TypeDist}.
   
     
-get_element_names(Elems) ->
-    lists:append([get_element_name(E)||E<-Elems]).
+get_element_names(Elems, AllTypes) ->
+    lists:append([get_element_name(E, AllTypes)||E<-Elems]).
 
-get_element_name(#el{alts = Alternatives}) ->
-    [get_element_name_1(Alt)||Alt<-Alternatives].
+get_element_name(#el{alts = Alternatives, mn=Min, mx=Max}, AllTypes) ->
+    [get_element_name_1(Alt, {Min, Max}, AllTypes)||Alt<-Alternatives].
     
 %%TODO: to be completed!!!
-get_element_name_1(#alt{tag = Tag, rl = true, tp=Type, mx=_Max}) ->
-    {Tag, Type}.
+get_element_name_1(A=#alt{tag = Tag, rl = true, tp=_Type, mx=_Max}, 
+                   {ElemMin, ElemMax}, AllTypes) ->
+    {Str,_}=write_hrl:write_alt_type(A, {ElemMin, ElemMax}, AllTypes),
+    TypeStr=lists:last(string:tokens(Str, [$:])),
+    {Tag, TypeStr}.
 
 
-get_attr_names(Attrs) ->
-    [get_attr_name(A)||A<-Attrs].
+get_attr_names(Attrs, AllTypes) ->
+    [get_attr_name(A, AllTypes)||A<-Attrs].
  
-get_attr_name(#att{nm = Name, tp=Type}) ->
-   {Name, Type}.
- 
+get_attr_name(A=#att{nm = Name, tp=_Type}, AllTypes) ->
+    {Str, _}=write_hrl:writeAttribute(A, AllTypes),
+    TypeStr=lists:last(string:tokens(Str, [$:])),
+    {Name,TypeStr}.
+
 process_interface_and_binding(Interface, Binding, Model) ->
     APIInterface= process_interface(Interface),
     APIBinding = process_binding(Binding),
@@ -338,9 +343,12 @@ get_param_field_names(TypeName, _DataModel=#model{tps =Types}) ->
              false -> TypeName;
              V -> V#alt.tp
          end,
+    AllTypes=[T#type.nm||T<-Types, 
+                         not is_list(T#type.anyAttr) 
+                             orelse lists:keyfind(is_simple_type,1,T#type.anyAttr)==false],
     #type{nm=Type, els=Elems, atts=Attrs}=lists:keyfind(Type, #type.nm, Types),
-    Names1 = get_element_names(Elems),
-    Names2 = get_attr_names(Attrs),
+    Names1 = get_element_names(Elems, AllTypes),
+    Names2 = get_attr_names(Attrs, AllTypes),
     Names1++Names2.
   
 rm_prefix(Type) ->
