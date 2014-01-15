@@ -43,13 +43,13 @@
 
 %%@private
 test() ->
-   write_hrl_file("../tests/weather/weather.xsd", "weather.hrl").
-   write_hrl_file("../tests/bookstore_sample/booklist.xsd", "booklist.hrl").
-   write_hrl_file("../tests/bookstore_sample/person.xsd", "person.hrl").
-   write_hrl_file("../tests/bookstore_sample/complex_example.xsd", "complex_example.hrl").
-   write_hrl_file("../tests/bookstore_sample/extension.xsd", "extension.erl"). %% does not work.
-   write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
-   write_hrl_file("../tests/vodkatv_sample/vodkatv.xsd", "vodkatv.hrl").
+   %%write_hrl_file("../tests/weather/weather.xsd", "weather.hrl").
+   %% write_hrl_file("../tests/bookstore_sample/booklist.xsd", "booklist.hrl").
+   %% write_hrl_file("../tests/bookstore_sample/person.xsd", "person.hrl").
+   %% write_hrl_file("../tests/bookstore_sample/complex_example.xsd", "complex_example.hrl").
+   %% write_hrl_file("../tests/bookstore_sample/extension.xsd", "extension.erl"). %% does not work.
+    write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
+   %% write_hrl_file("../tests/vodkatv_sample/vodkatv.xsd", "vodkatv.hrl").
 
 %%@doc Generate type definitions. This function takes an .xsd file as input, 
 %%     generates the Erlang representation of types, and write the results to 
@@ -109,7 +109,8 @@ write_a_record_type(_T=#type{nm = Name, els = Elements, atts = Attributes}, AllT
     Attrs= write_attributes(Attributes, AllTypes),
     Elems = write_elements(lists:reverse(Elements),AllTypes),
     WrittenType= "-record(" ++ write_name(Name) ++",\n"
-        ++ spaces(8)++"{"++joinStrings(Attrs++Elems)
+        ++ spaces(8)++"{anyAttrs :: any(),\n"
+        ++spaces(9)++joinStrings(Attrs++Elems)
         ++ "}).\n\n",
     {Name, WrittenType, Deps}.
 
@@ -211,7 +212,7 @@ write_name_without_prefix(Name) ->
             "'"++L++"'";
         false -> lists:flatten(io_lib:format("~p", [list_to_atom(L)]))
     end.
-write_alt_type(A=#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix, anyInfo=Constraints}, 
+write_alt_type(_A=#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix, anyInfo=Constraints}, 
                {_ElemMin, _ElemMax}, AllTypes) 
   when is_list(Constraints)->
     Cs=[{C,V}||{C, V}<-Constraints, 
