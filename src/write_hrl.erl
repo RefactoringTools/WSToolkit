@@ -108,10 +108,17 @@ write_a_record_type(_T=#type{nm = Name, els = Elements, atts = Attributes}, AllT
     Deps = sets:to_list(sets:from_list(Deps1++Deps2))--[Name],
     Attrs= write_attributes(Attributes, AllTypes),
     Elems = write_elements(lists:reverse(Elements),AllTypes),
-    WrittenType= "-record(" ++ write_name(Name) ++",\n"
-        ++ spaces(8)++"{anyAttrs :: any(),\n"
-        ++spaces(9)++joinStrings(Attrs++Elems)
-        ++ "}).\n\n",
+    WrittenType=
+        case Elements==[] andalso Attributes==[] of 
+            true ->
+                "-record(" ++ write_name(Name) ++",\n"
+                    ++ spaces(8)++"{anyAttrs :: any()}).\n\n";
+            false ->
+                "-ercord(" ++ write_name(Name) ++",\n"
+                    ++ spaces(8)++"{anyAttrs :: any(),\n"
+                    ++spaces(9)++joinStrings(Attrs++Elems)
+                    ++ "}).\n\n"
+        end,
     {Name, WrittenType, Deps}.
 
 write_elements(Elements, AllTypes) ->
@@ -374,4 +381,3 @@ re_order_types([H={TypeName, WrittenType, Deps}|Others], Acc) ->
             re_order_types(Others, [WrittenType|Acc]);
         false -> re_order_types(Others1++[H|Others2], Acc)
     end.
-    
