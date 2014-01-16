@@ -37,7 +37,7 @@
          test2/0,
          test3/0]).
 
--export([vodkatv_sut/0]).
+-compile(export_all).
 
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
@@ -227,7 +227,8 @@ generate_post_params() ->
     "generate_post_params(ParamType, Values)->\n"
     "    Data=list_to_tuple([ParamType, []|Values]),\n"
     "    {ok, Model}=erlsom:compile_xsd_file(?XSD_File),\n"
-    "    erlsom:write(Data, Model).\n\n".
+    "    {ok, Doc}=erlsom:write(Data, Model),\n"
+    "    Doc.\n\n".
 
 process_response() ->
     "\n"
