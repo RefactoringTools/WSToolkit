@@ -37,9 +37,19 @@
          test2/0,
          test3/0]).
 
+-export([vodkatv_sut/0]).
+
 -include_lib("erlsom/include/erlsom_parse.hrl").
 -include_lib("erlsom/include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
+
+vodkatv_sut() ->
+    write_sut_api(
+      "vodkatv.hrl",
+      "../tests/vodkatv/vodkatv2.wsdl",
+      "../tests/vodkatv/vodkatv.xsd",
+      "http://10.121.55.32:8082/vodkatv/",
+      "vodkatv_sut.erl").
 
 %%@private
 test0() ->
