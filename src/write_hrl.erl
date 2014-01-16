@@ -114,7 +114,7 @@ write_a_record_type(_T=#type{nm = Name, els = Elements, atts = Attributes}, AllT
                 "-record(" ++ write_name(Name) ++",\n"
                     ++ spaces(8)++"{anyAttrs :: any()}).\n\n";
             false ->
-                "-ercord(" ++ write_name(Name) ++",\n"
+                "-record(" ++ write_name(Name) ++",\n"
                     ++ spaces(8)++"{anyAttrs :: any(),\n"
                     ++spaces(9)++joinStrings(Attrs++Elems)
                     ++ "}).\n\n"
