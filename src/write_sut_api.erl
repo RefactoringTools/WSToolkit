@@ -225,8 +225,10 @@ util_funs() ->
 generate_post_params() ->
     "\n"
     "generate_post_params(ParamType, Values)->\n"
-    "    Data=list_to_tuple([ParamType, []|Values]),\n"
-    "    {ok, Model}=erlsom:compile_xsd_file(?XSD_File),\n"
+    "    NS = \"ns0\",\n"
+    "    Data=list_to_tuple([list_to_atom(NS ++ \":\" ++ atom_to_list(ParamType)),\n"
+    "                       []|Values]),\n"
+    "    {ok, Model}=erlsom:compile_xsd_file(?XSD_File, [{prefix, NS}]),\n"
     "    {ok, Doc}=erlsom:write(Data, Model),\n"
     "    Doc.\n\n".
 
