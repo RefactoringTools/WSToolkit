@@ -48,8 +48,8 @@ test() ->
    %% write_hrl_file("../tests/bookstore_sample/person.xsd", "person.hrl").
    %% write_hrl_file("../tests/bookstore_sample/complex_example.xsd", "complex_example.hrl").
    %% write_hrl_file("../tests/bookstore_sample/extension.xsd", "extension.erl"). %% does not work.
-    write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
-   %% write_hrl_file("../tests/vodkatv_sample/vodkatv.xsd", "vodkatv.hrl").
+   %% write_hrl_file("../tests/bookstore_sample/book.xsd", "book.hrl").
+   write_hrl_file("../tests/vodkatv/vodkatv.xsd", "vodkatv.hrl").
 
 %%@doc Generate type definitions. This function takes an .xsd file as input, 
 %%     generates the Erlang representation of types, and write the results to 
