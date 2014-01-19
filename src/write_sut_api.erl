@@ -423,11 +423,11 @@ gen_params()->
     "get_element_names(Elems) ->\n"
     "    lists:append([get_element_name(E)||E<-Elems]).\n"
     "\n"
-    "get_element_name(#el{alts = Alternatives}) ->\n"
-    "    [get_element_name_1(Alt)||Alt<-Alternatives].\n"
+    "get_element_name(#el{alts = Alternatives, mn=Min, mx=Max}) ->\n"
+    "    [get_element_name_1(Alt, Min, Max)||Alt<-Alternatives].\n"
     "\n"
     "%%TODO: to be completed!!!\n"
-    "get_element_name_1(#alt{tag = Tag, rl = true, tp=_Type, mx=Max}) ->\n"
+    "get_element_name_1(#alt{tag = Tag, rl = true, tp=_Type}, _Min, Max) ->\n"
     "    {Tag, Max}.\n"
     "\n"
     "get_attr_names(Attrs) ->\n"
@@ -436,8 +436,3 @@ gen_params()->
     "get_attr_name(#att{nm = Name}) ->\n"
     "   {Name,1}.\n".
 
-
-
-%% httpc:request(get, {"http://www.webservicex.net/globalweather.asmx/GetCitiesByCountry?CountryName=\"US\"",[]}, [], []).  
-
- %% httpc:request(get, {"http://www.webservicex.net/globalweather.asmx/GetWeather?CityName=Weipa&CountryName=Australia",[]}, [], []).
