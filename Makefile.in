@@ -1,4 +1,4 @@
-APPNAME = WSToolkit 
+APPNAME = WSToolkit
 
 include vsn.mk
 
