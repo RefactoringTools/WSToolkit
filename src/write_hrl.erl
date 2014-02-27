@@ -36,8 +36,8 @@
 
 -export([test/0]).
 
--include_lib("erlsom/include/erlsom_parse.hrl").
--include_lib("erlsom/include/erlsom.hrl").
+-include("../include/erlsom_parse.hrl").
+-include("../include/erlsom.hrl").
 
 -compile(export_all).
 
@@ -213,7 +213,7 @@ spaces(N) ->
     lists:append(lists:duplicate(N, " ")).
 
 write_name_without_prefix(Name) ->
-    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     case reserved_word(Name) of
         true ->
             "'"++L++"'";

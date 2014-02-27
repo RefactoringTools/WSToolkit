@@ -34,8 +34,8 @@
 
 -export([test/0]).
 
--include_lib("erlsom/include/erlsom_parse.hrl").
--include_lib("erlsom/include/erlsom.hrl").
+-include("../include/erlsom_parse.hrl").
+-include("../include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
 -compile(export_all).
@@ -67,9 +67,9 @@ ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
 
 
 analyze_model(XsdFile, WsdlFile) ->
-    {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
-    Model1 = erlsom:add_xsd_model(Model),
-    Result=erlsom:parse_file(WsdlFile, Model1),
+    {ok, Model} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    Model1 = ws_erlsom:add_xsd_model(Model),
+    Result=ws_erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
             {ok, DataModel} = gen_xsd_model:gen_xsd_model(XsdFile),
