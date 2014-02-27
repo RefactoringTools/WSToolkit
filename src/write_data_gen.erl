@@ -111,7 +111,6 @@ write_data_generators(XsdFile, WsdlFile) ->
         {ok, Model} ->
             case WsdlFile of 
                 none ->
-                    io:format("DDD\n"),
                     {ok, write_data_generators_1(Model)};
                 _ ->
                     InputDataTypes = get_input_data_types(WsdlFile, Model),
@@ -147,7 +146,6 @@ write_data_generators_1(#model{tps = Types},InputDataTypes) ->
     
   
 write_data_generators_2(Types, Acc) ->
-    io:format("Types:~p\n", [Types]),
     Generators=[write_a_data_gen(T)
                 ||T<-Types],
     Acc ++ lists:flatten(rm_duplicates(lists:append(Generators))).
@@ -552,7 +550,6 @@ rm_duplicates_1([E|Elems], Acc) ->
 get_input_data_types(WsdlFile, Model) ->
     {ok, Model1} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model2 = ws_erlsom:add_xsd_model(Model1),
-    io:format("WsdlFile:~p\n", [WsdlFile]),
     Result=ws_erlsom:parse_file(WsdlFile, Model2),
     case Result of
         {ok, Res} ->

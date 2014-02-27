@@ -56,10 +56,8 @@ test3() ->
 gen_xsd_model(XsdFile) ->
     case ws_erlsom:compile_xsd_file(XsdFile, []) of
         {ok, Model} ->
-            io:format("Model:~p\n", [Model]),
             {ParseRes, _}=xmerl_scan:file(XsdFile),
             %% currently does not work with nested defintions.
-            io:format("ParseRes:~p\n", [ParseRes]),
             NewModel=add_simple_type_info(Model, ParseRes), 
             {ok, NewModel};
         {error, Error} -> 
@@ -74,7 +72,6 @@ add_simple_type_info(Model, ParseRes)->
                         lists:last(string:tokens(
                                      atom_to_list(C#xmlElement.name), [$:]))
                         =="simpleType"],
-    io:format("SimpleTypes:~p\n", [SimpleTypes]),
     update_simple_types_in_model(Model, SimpleTypes).
    
 update_simple_types_in_model(Model, []) ->
@@ -84,7 +81,6 @@ update_simple_types_in_model(Model, [Type|SimpleTypes]) ->
     update_simple_types_in_model(NewModel, SimpleTypes).
 
 update_a_simple_type_in_model(Model, Type) ->
-    io:format("Type:~p\n", [Type]),
     Attrs= Type#xmlElement.attributes,
     Content=Type#xmlElement.content,
     [NameAttr]=[A||A<-Attrs, A#xmlAttribute.name==name],
@@ -95,8 +91,6 @@ update_a_simple_type_in_model(Model, Type) ->
                     lists:last(string:tokens(
                                  atom_to_list(E#xmlElement.name), [$:]))
                     =="restriction"],
-    io:format("Name:~p\n", [Name]),
-    io:format("R:~p\n", [Restrictions]),
     NewModel=update_simple_type_info_in_model(Model, Name),
     case Restrictions of 
         [R] -> 
@@ -122,7 +116,6 @@ update_simple_type_restriction(Model, Name, R) ->
                     lists:last(string:tokens(
                                  atom_to_list(E#xmlElement.name), [$:]))
                     =="pattern"],
-    io:format("Pattern:~p\n", [Pattern]),
     MinIncl=[E||E<-Elems,
                 is_record(E, xmlElement) andalso
                     lists:last(string:tokens(
@@ -174,7 +167,6 @@ update_simple_type_pattern(Model, _Name,  []) ->Model;
 update_simple_type_pattern(Model,Name, [Pattern])->
     Attrs= Pattern#xmlElement.attributes,              
     [ValueAttr]=[A||A<-Attrs, A#xmlAttribute.name==value],
-    io:format("ValueAttr:~p\n", [ValueAttr]),
     update_type_info_in_model(Model, Name,  
                               {pattern, ValueAttr#xmlAttribute.value}).
  
@@ -270,15 +262,11 @@ update_base_type_info_in_model(Model, Name0, BaseType) ->
     end.
 
 update_type_info_in_model(Model, Name0, Info) ->
-    io:format("Name, Info:~p\n", [{Name0, Info}]),
     Name = list_to_atom(Name0),
     Types=Model#model.tps,
-    io:format("Types:~p\n", [Types]),
-    io:format("Type:~p\n", [[T||T<-Types, T#type.nm==Name]]),
     case [T||T<-Types, T#type.nm==Name] of 
         [] -> Model;
         [CurType] ->
-            io:format("CurType;~p\n", [CurType]),
             #type{nm = Name, els = Elements, atts = _Attributes}=CurType,
             [#el{alts =[Alt]}]=Elements,
             NewInfo =case Alt#alt.anyInfo of 
