@@ -12,7 +12,10 @@ ERLC         = "@ERLC@"
 
 ERL_SRC = $(wildcard src/*.erl)
 
-ERL_OBJ = $(patsubst src/%.erl,ebin/%.beam,$(ERL_SRC))
+ERL_ERLSOM_SRC = $(wildcard src/erlsom/*.erl)
+
+ERL_OBJ = $(patsubst src/%.erl,ebin/%.beam,$(ERL_SRC)) \
+	 $(patsubst src/erlsom/%.erl, ebin/%.beam, $(ERL_ERLSOM_SRC))
 
 .PHONY: default all conf erl 
 
@@ -30,6 +33,8 @@ erl: $(ERL_OBJ)
 ebin/%.beam: src/%.erl
 	$(ERLC) -pa ebin -I include -W -o ebin +debug_info $<
 
+ebin/%.beam: src/erlsom/%.erl
+	$(ERLC) -pa ebin -I include -W -o ebin +debug_info $<
 
 src/%.erl:
 	$(ERLC) -o src $<
