@@ -40,6 +40,11 @@
 
 -compile(export_all).
 
+
+gen_diff(Dir1, Dir2) ->
+    ws_diff({Dir1++"/vodkatv.wsdl", Dir1++"/vodkatv.xsd"},
+            {Dir2++"/vodkatv.wsdl", Dir2++"/vodkatv.xsd"}).
+
 %%@private
 test() ->
     ws_diff({"../tests/vodkatv_sample/vodkatv_v0.wsdl",
@@ -67,7 +72,9 @@ ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
 
 
 analyze_model(XsdFile, WsdlFile) ->
-    {ok, Model} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    LibDir = code:lib_dir('WSToolkit'),
+    XsdDir =LibDir++"/priv/wsdl20.xsd",
+    {ok, Model} = ws_erlsom:compile_xsd_file(XsdDir),
     Model1 = ws_erlsom:add_xsd_model(Model),
     Result=ws_erlsom:parse_file(WsdlFile, Model1),
     case Result of

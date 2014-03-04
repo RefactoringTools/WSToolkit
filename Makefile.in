@@ -57,6 +57,8 @@ install: default
 	install -m 775 src/*.erl $(LIB_DIR)/src
 	install -m 775 -d $(LIB_DIR)/include
 	install -m 775 include/*.hrl $(LIB_DIR)/include
+	install -m 775 -d ${LIB_DIR}/priv
+	install -m 775 priv/*.* $(LIB_DIR)/priv 
 	@echo
 	@echo "*** Successfully installed."
 	@echo
