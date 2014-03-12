@@ -32,98 +32,29 @@
 
 -export([integer/0, integer/1, integer/2,
          string/0, string/1,  string/2]).
-
+-import(wsdl_dsl, [wsdlType/1, xint/0, pattern/2]).
 -include_lib("eqc/include/eqc.hrl").
 
 %% integer generator.
 integer() ->
-    int().
+    wsdlType(xint()).
 
 %% generates an integer according to the patttern.
 integer(Pattern) when is_list(Pattern)->
-    ?LET(S, string(Pattern),
-         list_to_integer(S)).
+    wsdlType(pattern(regexp_gen:from_string(Pattern), xint())).
 
 %% generates an integer within the range.
-integer(inf, inf) ->
-    int();
-integer(Min, inf) ->
-    ?LET(N, int(),
-         if abs(N)<Min -> abs(N)+Min;
-            N<Min-> abs(N);
-            true ->N                                  
-         end);
-integer(inf, Max) ->
-    ?LET(N, int(),
-         if N>Max andalso Max>=0->
-                 Max-N;
-            N>Max andalso Max<0 ->
-                 Max-abs(N);
-            true -> N
-         end);
 integer(Min, Max) ->
-    choose(Min, Max).
-
+    wsdlType(wsdl_dsl:minInclusive(Min, wsdl_dsl:maxInclusive(Max, xint()))).
  
 %% generatea a printable string.
 string() ->
-    list(choose(32, 127)).
+    wsdlType(wsdl_dsl:string()).
 
 %% generatea a string whose length is within the range.
 string(MinLen, MaxLen) ->
-    ?LET(N, choose(MinLen, MaxLen),
-         lists:foldl(fun(_X, Acc)->
-                             ?LET(C, choose(32, 127),
-                                  [C|Acc])
-                     end, [],lists:seq(1,N))).
+    wsdlType(wsdl_dsl:minLength(MinLen, wsdl_dsl:maxLength(MaxLen, wsdl_dsl:string()))).
 
 %% generatea a string according to a pattern.
 string(Pattern) ->
-    gen_with_pattern(Pattern).
-
-
-gen_with_pattern(Pat) ->
-    Pat1=preprocess_pat(Pat),
-    case reg_exp:parse(Pat1) of
-        {ok, ParseRes} ->
-            gen_with_pattern_1(ParseRes);
-        {error, Reason} ->
-            {error, Reason}
-     end.
-
-preprocess_pat(Pat) ->
-    lists:flatten([case C of 
-                       127 -> "[0-9]";
-                       C -> C
-                   end||C<-Pat]).
-    
-
-gen_with_pattern_1(Pat) when is_integer(Pat) ->
-    [Pat];
-gen_with_pattern_1({'or', E1, E2}) ->
-    oneof([gen_with_pattern_1(E1), gen_with_pattern_1(E2)]);
-gen_with_pattern_1({concat, E1, E2}) ->
-    ?LET({N1, N2}, {gen_with_pattern_1(E1), gen_with_pattern_1(E2)},
-         N1++N2);
-gen_with_pattern_1({kclosure, E1}) ->
-    ?LET(L, list(gen_with_pattern_1(E1)),
-         lists:append(L));
-gen_with_pattern_1({pclosure, E1}) ->
-    ?SUCHTHAT(S, 
-              ?LET(L, list(gen_with_pattern_1(E1)),
-                   lists:append(L)),
-              S/=[]);
-gen_with_pattern_1({char_class, Scope}) ->
-    All=lists:append([case R of 
-                          {S, E} ->lists:seq(S,E);
-                          _ -> [R]
-                      end||R<-Scope]),
-    [eqc_gen:oneof(All)];
-gen_with_pattern_1({repeat, N, E}) when N>1 ->
-    ?LET({S1, S2}, 
-         {gen_with_pattern_1({repeat,N-1, E}), gen_with_pattern_1(E)},
-         S1++S2);
-gen_with_pattern_1({repeat, _, E}) ->
-    gen_with_pattern_1(E).
-    
-                                  
+    wsdlType(pattern(regexp_gen:from_string(Pattern), wsdl_dsl:string())).
