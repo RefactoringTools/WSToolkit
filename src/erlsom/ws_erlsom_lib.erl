@@ -22,7 +22,7 @@
 %%% A couple of support functions for Erlsom
 %%% ====================================================================
 
--module(erlsom_lib).
+-module(ws_erlsom_lib).
 
 -export([convertPCData/4,
          makeName/2, makeName/4, nameWithoutPrefix/1,
@@ -45,11 +45,11 @@
          makeQname/1, localName/1, 
          getTargetNamespaceFromXsd/1,
          removePrefixes/1]).
-
--include_lib("erlsom/include/erlsom_compile.hrl").
--include_lib("erlsom/include/erlsom_sax.hrl").
--include_lib("erlsom/include/erlsom.hrl").
--include_lib("erlsom/include/erlsom_parse.hrl"). %% the record definitions
+ 
+-include("../include/erlsom_compile.hrl").
+-include("../include/erlsom_sax.hrl").
+-include("../include/erlsom.hrl").
+-include("../include/erlsom_parse.hrl"). %% the record definitions
 
 %% debug(Text) -> io:format("lib: ~p\n", [Text]).
 
@@ -61,7 +61,7 @@
 convertPCData(Text, char, _Namespaces, _NamespaceMapping) when is_binary(Text) ->
   Text;
 convertPCData(Text, Type, Namespaces, NamespaceMapping) when is_binary(Text) ->
-  convertPCData(erlsom_ucs:decode_utf8(Text), Type, Namespaces, NamespaceMapping);
+  convertPCData(ws_erlsom_ucs:decode_utf8(Text), Type, Namespaces, NamespaceMapping);
 convertPCData(Text, Type, Namespaces, NamespaceMapping) ->
   case Type of
     char ->
@@ -107,7 +107,7 @@ convertPCData(Text, Type, Namespaces, NamespaceMapping) ->
           if 
             Prefix == [] -> %% no prefix, no default namespace
               #qname{localPart = Text};
-            Prefix == "xml"  -> %% by convention 
+            Prefix == "xml" -> %% by convention 
               #qname{localPart = LocalName, uri = "http://www.w3.org/XML/1998/namespace", 
                      prefix = Prefix, mappedPrefix = Prefix};
             true ->
@@ -489,13 +489,13 @@ autodetect(Input) ->
     ucs4le ->
       xmerl_ucs:from_ucs4le(Input);
     utf16be ->
-      {Result, []} = erlsom_ucs:from_utf16be(Input),
+      {Result, []} = ws_erlsom_ucs:from_utf16be(Input),
       Result;
     utf16le ->
-      {Result, []} = erlsom_ucs:from_utf16le(Input),
+      {Result, []} = ws_erlsom_ucs:from_utf16le(Input),
       Result;
     utf8 ->
-      {Result, []} = erlsom_ucs:from_utf8(Input),
+      {Result, []} = ws_erlsom_ucs:from_utf8(Input),
       Result;
     iso_8859_1 ->
       binary_to_list(Input)
@@ -744,7 +744,7 @@ find_xsd(Namespace, Location, Include_dirs, Include_list) ->
       Prefix = prefix(Namespace),
       {Body, Prefix};
     _ ->
-       erlsom_lib:findFile(Namespace, Location, Include_dirs, Include_list)
+       ws_erlsom_lib:findFile(Namespace, Location, Include_dirs, Include_list)
   end.
  
 prefix(Namespace) ->
@@ -904,3 +904,4 @@ splitOnColon(Text) ->
     true ->
       {string:substr(Text, 1, PosOfColon - 1), string:substr(Text, PosOfColon + 1)}
   end.
+ 

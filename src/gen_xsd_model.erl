@@ -35,8 +35,8 @@
 -export([test/0, test1/0, test2/0, test3/0]).
 
 
--include_lib("erlsom/include/erlsom_parse.hrl").
--include_lib("erlsom/include/erlsom.hrl").
+-include("../include/erlsom_parse.hrl").
+-include("../include/erlsom.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 -include("../include/wsdl20.hrl").
 
@@ -54,7 +54,7 @@ test3() ->
     gen_xsd_model("../tests/vodkatv_sample/vodkatv.xsd").
                                  
 gen_xsd_model(XsdFile) ->
-    case erlsom:compile_xsd_file(XsdFile, []) of
+    case ws_erlsom:compile_xsd_file(XsdFile, []) of
         {ok, Model} ->
             {ParseRes, _}=xmerl_scan:file(XsdFile),
             %% currently does not work with nested defintions.

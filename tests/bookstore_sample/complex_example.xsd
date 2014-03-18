@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema  xmlns="http://www.w3.org/2001/XMLSchema"
+    targetNamespace=" http://schemas.microsoft.com/wbem/wsman/1/cim/interactive.xsd"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema">
+   
+    <xs:simpleType name="EventType_Type">
+    <xs:restriction base="xs:string">
+    <xs:enumeration value="NoSemantics" />
+    <xs:enumeration value="Debug" />
+    <xs:enumeration value="Warning" />
+    <xs:enumeration value="Verbose" />
+    <xs:enumeration value="Progress" />
+    <xs:enumeration value="Confirm" />
+    <xs:enumeration value="ErrorAction" />
+    <xs:enumeration value="StreamingOutput" />
+    </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="Type_Type">
+    <xs:restriction base="xs:unsignedInt">
+       <enumeration value="0">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is boolean
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="1">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is unsigned integer 8 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="2">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is signed integer 8 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="3">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is unsigned integer 16 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="4">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is signed integer 16 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="5">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is unsigned integer 32 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="6">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is signed integer 32 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="7">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is unsigned integer 64 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="8">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is signed integer 64 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="9">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is single-precision 32-bit floating point
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="10">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is double-precision 64-bit floating point
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="11">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is character 16 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="12">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is datetime
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="13">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is string
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="14">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is reference
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="15">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is embedded object
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="16">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of booleans
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="7">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of unsigned integer 8 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="18">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of signed integer 8 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="19">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of unsigned integer 16 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="20">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of signed integer 16 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="21">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of unsigned integer 32 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="22">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of signed integer 32 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="23">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of unsigned integer 64 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="24">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of signed integer 64 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="25">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of single-precision 32-bit floating point
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="26">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of double-precision 64-bit floating point
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="27">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of character 16 bits
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="28">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of datetime
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="29">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of strings
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="30">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is aray of references
+              </documentation>
+           </annotation>
+       </enumeration>
+       <enumeration value="31">
+           <annotation>
+              <documentation xml:lang="en">
+                    The type is array of embedded objects
+              </documentation>
+           </annotation>
+       </enumeration>
+    </xs:restriction>
+    </xs:simpleType>
+<xs:simpleType name="ActionType_Type">
+    <xs:restriction base="xs:string">
+    <xs:enumeration value="Inquire" />
+    <xs:enumeration value="Report" />
+    </xs:restriction>
+</xs:simpleType>
+<xs:simpleType name="PromptType_Type">
+    <xs:restriction base="xs:string">
+    <xs:enumeration value="Normal" />
+    <xs:enumeration value="Critical" />
+    </xs:restriction>
+</xs:simpleType>
+<xs:complexType name="InteractiveEventComplexType" mixed="true">
+    <xs:sequence>
+    <xs:any processContents="lax" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+</xs:complexType>
+<xs:complexType name="InteractiveEventType">
+  <xs:sequence>
+    <xs:element name="EventType" type="EventType_Type"/>
+    <xs:element name="Description" type="InteractiveEventComplexType" minOccurs="0"/>
+    <xs:element name="Activity" type="xs:string" minOccurs="0"/>
+    <xs:element name="CurrentOperation" type="xs:string" minOccurs="0"/>
+    <xs:element name="StatusDescription" type="xs:string" minOccurs="0"/>
+    <xs:element name="PercentComplete" type="xs:unsignedInt" minOccurs="0"/>
+    <xs:element name="SecondsRemaining" type="xs:unsignedInt" minOccurs="0"/>
+    <xs:element name="ActionType" type="ActionType_Type" minOccurs="0"/>
+    <xs:element name="PromptType" type="PromptType_Type" minOccurs="0"/>
+    <xs:element name="Name" type="xs:string" minOccurs="0"/>
+    <xs:element name="Type" type="Type_Type" minOccurs="0"/>
+    <xs:element name="Value" type="InteractiveEventComplexType" minOccurs="0"/>
+  </xs:sequence>
+</xs:complexType>
+<xs:simpleType name="ResponseType">
+  <xs:restriction base="xs:string">
+    <xs:enumeration value="yes" />
+    <xs:enumeration value="no" />
+    <xs:enumeration value="yesToAll" />
+    <xs:enumeration value="noToAll" />
+  </xs:restriction>
+    </xs:simpleType>
+    <xs:complexType name="InteractiveResponseType">
+      <xs:sequence>
+        <xs:element name="EventType" type="EventType_Type"/>
+        <xs:element name="Response" type="ResponseType"/>
+      </xs:sequence>
+      
+    </xs:complexType>
+    <xs:complexType name="MessageType" mixed="true">
+    <xs:sequence>
+    <xs:element name="ProviderFault"
+                type="ProviderFaultType" minOccurs="0" />
+    </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="WSManFaultType">
+          <xs:sequence>
+            <xs:element name="Message" type="MessageType" minOccurs="0"/>
+          </xs:sequence>
+          <xs:attribute name="Code" type="xs:unsignedInt" use="required"/>
+          <xs:attribute name="Machine" type="xs:string" use="required"/>
+          <xs:anyAttribute processContents="lax"/>
+        </xs:complexType>
+                <xs:simpleType name="GUIDType">
+                  <xs:restriction base="xs:string">
+                    <xs:pattern value="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"/>
+                  </xs:restriction>
+                </xs:simpleType>
+        <xs:complexType name="ProviderFaultType" mixed="true">
+    <xs:sequence>
+    <xs:any processContents="lax" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="providerId" type="GUIDType" />
+    <xs:anyAttribute processContents="lax" />
+    </xs:complexType> 
+</schema>
+<!--   </wsdl:types> -->
+ 
+  <!-- Common messages -->
+<!--
+    <wsdl:message name="EmptyMessage" />
+    <wsdl:message name="AnyXmlMessage">
+      <wsdl:part name="body" type="wst:AnyXmlType" />
+    </wsdl:message>
+    <wsdl:message name="OptionalXmlMessage">
+      <wsdl:part name="body" type="wst:AnyXmlOptionalType" />
+    </wsdl:message> -->
+
+<!-- Specific messages -->
+<!--
+    <wsdl:message name="CreateResponseMessage">
+      <wsdl:part name="body" type="wst:CreateResponseType" />
+    </wsdl:message>
+  <wsdl:message name="SubscribeMsg" >
+    <wsdl:part name="body" element="wse:Subscribe" />
+  </wsdl:message>
+  <wsdl:message name="SubscribeResponseMsg" >
+    <wsdl:part name="body" element="wse:SubscribeResponse" />
+  </wsdl:message>
+  <wsdl:message name="UnsubscribeMsg" >
+    <wsdl:part name="body" element="wse:Unsubscribe" />
+  </wsdl:message>
+  <wsdl:message name="UnsubscribeResponseMsg" />
+  <wsdl:message name="EnumerateMessage">
+    <wsdl:part name="body" element="wsen:Enumerate" />
+  </wsdl:message>
+  <wsdl:message name="EnumerateResponseMessage">
+    <wsdl:part name="body" element="wsen:EnumerateResponse" />
+  </wsdl:message>
+  <wsdl:message name="PullMessage">
+    <wsdl:part name="body" element="wsen:Pull" />
+  </wsdl:message>
+  <wsdl:message name="PullResponseMessage">
+    <wsdl:part name="body" element="wsen:PullResponse" />
+  </wsdl:message>
+  <wsdl:message name="ReleaseMessage">
+    <wsdl:part name="body" element="wsen:Release" />
+  </wsdl:message>
+  <wsdl:message name="ReleaseResponseMessage" />
+  <wsdl:message name="EnumerationEndMessage" >
+    <wsdl:part name="body" element="wsen:EnumerationEnd" />
+  </wsdl:message>
+  <wsdl:message name="CommandMessage">
+    <wsdl:part name="body" element="wsman:CommandLine" />
+  </wsdl:message>
+  <wsdl:message name="CommandResponseMessage">
+    <wsdl:part name="body" element="wsman:CommandResponse" />
+  </wsdl:message>
+  <wsdl:message name="SignalMessage">
+    <wsdl:part name="body" element="wsman:Signal" />
+  </wsdl:message>
+  <wsdl:message name="SignalResponseMessage">
+    <wsdl:part name="body" element="wsman:SignalResponse" />
+  </wsdl:message>
+  <wsdl:message name="SendMessage">
+    <wsdl:part name="body" element="wsman:Send" />
+  </wsdl:message>
+  <wsdl:message name="SendResponseMessage">
+    <wsdl:part name="body" element="wsman:SendResponse" />
+  </wsdl:message>
+  <wsdl:message name="ReceiveMessage">
+    <wsdl:part name="body" element="wsman:Receive" />
+  </wsdl:message>
+  <wsdl:message name="ReceiveResponseMessage">
+    <wsdl:part name="body" element="wsman:ReceiveResponse" />
+  </wsdl:message> -->
+  
+  <!-- WSMAN portType -->
+ <!--
+    <wsdl:portType name="WSMAN">
+      <wsdl:operation name="Get">
+        <wsdl:input message="wsman:OptionalXmlMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/Get" />
+        <wsdl:output message="wsman:AnyXmlMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/GetResponse" />
+      </wsdl:operation>
+      <wsdl:operation name="Put">
+        <wsdl:input message="wsman:AnyXmlMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/Put" />
+        <wsdl:output message="wsman:OptionalXmlMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/PutResponse" />
+      </wsdl:operation>
+      <wsdl:operation name="Delete">
+        <wsdl:input message="wsman:EmptyMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/Delete" />
+        <wsdl:output message="wsman:OptionalXmlMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/DeleteResponse" />
+      </wsdl:operation>
+      <wsdl:operation name="Create">
+        <wsdl:input message="wsman:AnyXmlMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/Create" />
+        <wsdl:output message="wsman:CreateResponseMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/transfer/CreateResponse" />
+      </wsdl:operation>
+    <wsdl:operation name="Subscribe" >
+      <wsdl:input message="wsman:SubscribeMsg" wsa:Action="http://schemas.xmlsoap.org/ws/2004/08/eventing/Subscribe" />
+      <wsdl:output message="wsman:SubscribeResponseMsg" wsa:Action="http://schemas.xmlsoap.org/ws/2004/08/eventing/SubscribeResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Unsubscribe" >
+      <wsdl:input message="wsman:UnsubscribeMsg" wsa:Action="http://schemas.xmlsoap.org/ws/2004/08/eventing/Unsubscribe" />
+      <wsdl:output message="wsman:UnsubscribeResponseMsg" wsa:Action="http://schemas.xmlsoap.org/ws/2004/08/eventing/UnsubscribeResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Enumerate">
+      <wsdl:input message="wsman:EnumerateMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/enumeration/Enumerate" />
+      <wsdl:output message="wsman:EnumerateResponseMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/enumeration/EnumerateResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Pull">
+      <wsdl:input message="wsman:PullMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/enumeration/Pull" />
+      <wsdl:output message="wsman:PullResponseMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/enumeration/PullResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Release">
+      <wsdl:input message="wsman:ReleaseMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/enumeration/Release" />
+      <wsdl:output message="wsman:ReleaseResponseMessage" wsa:Action="http://schemas.xmlsoap.org/ws/2004/09/enumeration/ReleaseResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Command">
+      <wsdl:input message="wsman:CommandMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/Command" />
+      <wsdl:output message="wsman:CommandResponseMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/CommandResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Signal">
+      <wsdl:input message="wsman:SignalMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/Signal" />
+      <wsdl:output message="wsman:SignalResponseMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/SignalResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Send">
+      <wsdl:input message="wsman:SendMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/Send" />
+      <wsdl:output message="wsman:SendResponseMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/SendResponse" />
+    </wsdl:operation>
+    <wsdl:operation name="Receive">
+      <wsdl:input message="wsman:ReceiveMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/Receive" />
+      <wsdl:output message="wsman:ReceiveResponseMessage" wsa:Action="http://schemas.microsoft.com/wbem/wsman/1/windows/shell/ReceiveResponse" />
+    </wsdl:operation>
+  </wsdl:portType> -->
+  
+  <!-- WSMAN binding -->
+<!--  <wsdl:binding type="wsman:WSMAN" name="WSMANBinding">
+    <soap:binding style="document"
+    transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="Get">
+      <soap:operation soapAction="http://example.org/Get"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Put">
+      <soap:operation soapAction="http://example.org/Put"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Delete">
+      <soap:operation soapAction="http://example.org/Delete"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Create">
+      <soap:operation soapAction="http://example.org/Create"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Subscribe">
+      <soap:operation soapAction="http://example.org/Subscribe"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Unsubscribe">
+      <soap:operation soapAction="http://example.org/Unsuscribe"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Enumerate">
+      <soap:operation soapAction="http://example.org/Enumerate"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Pull">
+      <soap:operation soapAction="http://example.org/Pull"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Release">
+      <soap:operation soapAction="http://example.org/Release"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Command">
+      <soap:operation soapAction="http://example.org/Command"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Signal">
+      <soap:operation soapAction="http://example.org/Signal"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Send">
+      <soap:operation soapAction="http://example.org/Send"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="Receive">
+      <soap:operation soapAction="http://example.org/Receive"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation> 
+  </wsdl:binding>   -->

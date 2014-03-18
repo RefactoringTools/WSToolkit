@@ -39,17 +39,15 @@
 
 -compile(export_all).
 
--include_lib("erlsom/include/erlsom_parse.hrl").
--include_lib("erlsom/include/erlsom.hrl").
+-include("../include/erlsom_parse.hrl").
+-includeb("../include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
-
-
 -include_lib("eqc/include/eqc.hrl").
 
 %%@private
 test0()->
     write_data_generators_to_file("../tests/weather/weather.xsd",
-                                  "../tests/weather/weather.wsdlrr",
+                                  "../tests/weather/weather.wsdl",
                                   "weather.erl").
 
 %%@private
@@ -292,13 +290,13 @@ write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix}) ->
     write_gen(Type,[]).
 
 write_name_without_prefix(Name, true) ->
-    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()->"; 
 write_name_without_prefix(Name, false) ->
-    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"()->";
 write_name_without_prefix(Name, _Max) ->
-    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()->".
    
 write_enum_type(_Type, Enums) ->                         
@@ -550,9 +548,9 @@ rm_duplicates_1([E|Elems], Acc) ->
     end.
 
 get_input_data_types(WsdlFile, Model) ->
-    {ok, Model1} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
-    Model2 = erlsom:add_xsd_model(Model1),
-    Result=erlsom:parse_file(WsdlFile, Model2),
+    {ok, Model1} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    Model2 = ws_erlsom:add_xsd_model(Model1),
+    Result=ws_erlsom:parse_file(WsdlFile, Model2),
     case Result of
         {ok, Res} ->
             Choice = Res#'DescriptionType'.choice, 

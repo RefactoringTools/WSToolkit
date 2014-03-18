@@ -23,7 +23,7 @@
 %%% erlsom_parse.
 %%% ====================================================================
 
--module(erlsom_pass2).
+-module(ws_erlsom_pass2).
 -export([secondPass/2]).
 -export([pass5/2]).
 -export([pass0Types/2]).
@@ -31,7 +31,7 @@
 -export([pass0Elements/2]).
 -export([pass0Alternatives/2]).
 -export([pass0Alternatives/3]).
--import(erlsom_lib, [findType/6]). 
+-import(ws_erlsom_lib, [findType/6]). 
 -include("erlsom_compile.hrl").
 -include("erlsom.hrl").
 -include("erlsom_parse.hrl").
@@ -66,7 +66,7 @@ secondPass(IntermediateStruct,
                               targetNamespace = Tns}) ->
   Types0 = pass0(IntermediateStruct),
   {Types1, GlobalElements, TypeHierarchy} = translateTypes(Types0, 
-                            [], [], Types0, Info, erlsom_lib:newTree()),
+                            [], [], Types0, Info, ws_erlsom_lib:newTree()),
   %% Note: pass 4 is done before pass 3 (seems to be better).
   Types2 = pass3(Types1),
   Types3 = pass4(Types2, Info),
@@ -150,12 +150,12 @@ translateTypes([Type | Tail], Acc, GlobalAcc, Types, Info = #schemaInfo{namespac
                             undefined -> 
                               {TypeHierarchy, TranslatedType};
                             Base -> 
-                              {erlsom_lib:addTreeElement(list_to_atom(Type#typeInfo.typeName), 
-                                                         erlsom_lib:makeTypeRefAtom(Base, NS), 
-                                                         TypeHierarchy), 
+                              {ws_erlsom_lib:addTreeElement(list_to_atom(Type#typeInfo.typeName),
+                                                            ws_erlsom_lib:makeTypeRefAtom(Base, NS),
+                                                            TypeHierarchy),
                                %% TranslatedType#type{typeName = list_to_atom(erlsom_lib:makeTagFromRef(Base, NS))}}
                                TranslatedType#type{typeName = 
-                                 list_to_atom(erlsom_lib:removePrefixes(Type#typeInfo.typeName))}}
+                                 list_to_atom(ws_erlsom_lib:removePrefixes(Type#typeInfo.typeName))}}
                           end,
   case TypeOfType of
     globalElement ->
@@ -213,7 +213,7 @@ removeDeadRefsFromDoc(Type, _Types) ->
 translateType(Type = #typeInfo{elements=Elemts, attributes=Attrs, extends = Base, anyAttr = AnyAttr, mixed = Mixed}, 
               Types, Info = #schemaInfo{namespaces=NS})
   when Base /= undefined ->
-  case erlsom_lib:searchBase(erlsom_lib:makeTypeRef(Base, NS), Types) of
+  case ws_erlsom_lib:searchBase(ws_erlsom_lib:makeTypeRef(Base, NS), Types) of
     {value, #typeInfo{elements = BaseEls, attributes = BaseAttrs, anyAttr = BaseAnyAttr, extends = Base2, mixed = Mixed2}} ->
       %% debug(Elemts),
       %% debug(BaseEls),
@@ -223,10 +223,11 @@ translateType(Type = #typeInfo{elements=Elemts, attributes=Attrs, extends = Base
       translateType(Type#typeInfo{elements = BaseEls ++ Elemts, %% TODO: will never be 'undefined'?
                                   attributes = BaseAttrs ++ Attrs,  
 				  anyAttr = NewAnyAttr,
-                                  mixed = case Mixed of undefined -> Mixed2; _ -> Mixed end,
+                                  mixed = case Mixed of undefined -> Mixed2; _ -> Mixed
+                                          end,
                                   extends = Base2}, Types, Info);
     _Else ->
-      throw({error, "Base type not found: " ++ erlsom_lib:makeTypeRef(Base, NS)})
+      throw({error, "Base type not found: " ++ ws_erlsom_lib:makeTypeRef(Base, NS)})
   end;
 
 %% resolve 'restricted' types: look up the base and add its attributes (actually: replace the 
@@ -250,7 +251,7 @@ translateType(Type = #typeInfo{elements=Elemts, attributes=Attrs,
 translateType(Type = #typeInfo{elements=Elemts, restricts = Base, anyAttr = AnyAttr, mixed = Mixed}, 
               Types, Info = #schemaInfo{namespaces=NS})
   when Base /= undefined ->
-  case erlsom_lib:searchBase(erlsom_lib:makeTypeRef(Base, NS), Types) of
+  case ws_erlsom_lib:searchBase(ws_erlsom_lib:makeTypeRef(Base, NS), Types) of
     {value, #typeInfo{attributes = BaseAttrs, anyAttr = BaseAnyAttr, extends = Base2, 
                       restricts = Base3, mixed = Mixed2}} ->
       %% debug(Elemts),
@@ -261,12 +262,13 @@ translateType(Type = #typeInfo{elements=Elemts, restricts = Base, anyAttr = AnyA
       translateType(Type#typeInfo{elements = Elemts, 
                                   attributes = BaseAttrs,
 				  anyAttr = NewAnyAttr,
-                                  mixed = case Mixed of undefined -> Mixed2; _ -> Mixed end,
+                                  mixed = case Mixed of undefined -> Mixed2; _ -> Mixed
+                                          end,
                                   extends = Base2,
 				  restricts = Base3}, Types, Info);
     _Else ->
       %% debug(Base),
-      throw({error, "Base type not found: " ++ erlsom_lib:makeTypeRef(Base, NS)})
+      throw({error, "Base type not found: " ++ ws_erlsom_lib:makeTypeRef(Base, NS)})
   end;
 
 %% this corresponds with simple types. They don't have to be included in the model,
@@ -288,11 +290,11 @@ translateType(TypeInfo=#typeInfo{typeName=Name, typeRef=undefined,
                AnyAttr == undefined -> AnyAttrValue; 
                true -> AnyAttr
              end,
-  NrOfElements = erlsom_lib:listLength(Elemts) + 
-                 erlsom_lib:listLength(Attributes) +1,
-  Elements = translateElements(Elemts, [], erlsom_lib:listLength(Attributes) +1, 
-                               Types),
-  %% case Mixed of
+    NrOfElements = ws_erlsom_lib:listLength(Elemts) +
+                   ws_erlsom_lib:listLength(Attributes) + 1,
+    Elements = translateElements(Elemts, [], ws_erlsom_lib:listLength(Attributes) + 1,
+                                 Types),
+    %% case Mixed of
     %% true ->
       %% Elements2 = makeMixed(Elements, NrOfElements),
       %% NrOfElements2 = erlsom_lib:listLength(Elements2) + 
@@ -492,10 +494,11 @@ pass3Alternative(Alternative = #alt{tag = Name, rl = Real, tp = Type, mn = Mn}, 
                 true -> 
                   case TypeName of
                     '_document' -> Name;
-                    _ -> list_to_atom(atom_to_list(TypeName) ++ "-" ++ erlsom_lib:nameWithoutPrefix(atom_to_list(Name)))
+                    _ -> list_to_atom(atom_to_list(TypeName) ++ "-" ++ ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)))
                   end
               end,
-           {Alternative#alt{tp = NewTypeName, rl = simple, mn = case Mn of 0 -> 0; _ -> 1 end}, 
+           {Alternative#alt{tp = NewTypeName, rl = simple, mn = case Mn of 0 -> 0; _ -> 1
+                                                                end},
              [#type{nm = NewTypeName, tp = sequence, 
                     els = [#el{alts = [Alternative#alt{mn = 1, mx = 1}], 
                                mn = 1, mx = 1, nr = 1}], 
@@ -510,10 +513,11 @@ pass3Alternative(Alternative = #alt{tag = Name, rl = Real, tp = Type, mn = Mn}, 
                  Name == '#any' -> {Alternative, []};
                  true -> 
                    NewTypeName = 
-                     list_to_atom(atom_to_list(TypeName) ++ "-" ++ erlsom_lib:nameWithoutPrefix(atom_to_list(Name))),
+                     list_to_atom(atom_to_list(TypeName) ++ "-" ++ ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name))),
                    case lists:keysearch(Type, #type.nm, Types) of
                      {value, Record} ->
-                       {Alternative#alt{tp = NewTypeName, rl = true, mn = case Mn of 0 -> 0; _ -> 1 end}, 
+                       {Alternative#alt{tp = NewTypeName, rl = true, mn = case Mn of 0 -> 0; _ -> 1
+                                                                          end},
                          [Record#type{nm = NewTypeName}]};
                      _Else ->
                        %% debugTypes(Types),
@@ -636,7 +640,7 @@ pass5([], Acc, _Types, _Info) ->
 
 pass5Type(Rec = #type{nm = Name, els = Elements}, Types, Info = #schemaInfo{namespaces=NS}) ->
   %% this is a hack - Tns from #schemaInfo is not always correct when an xsd has been imported.
-  Tns = erlsom_lib:tagNamespace(Name, NS),
+  Tns = ws_erlsom_lib:tagNamespace(Name, NS),
   ThisTypesElements = pass5Elements(Elements, Types, Info, Tns),
   Rec#type{els = ThisTypesElements}.
 
@@ -741,7 +745,7 @@ getMatchingAlts(Alternatives, #anyInfo{ns = Namespaces}, Info, Tns) ->
 getMatchingAlts([], Acc, _Namespaces, _Info, _Tns) ->
   Acc;
 getMatchingAlts([Alt = #alt{tag=Tag} | Tail], Acc, Namespaces, Info = #schemaInfo{namespaces=NS}, Tns) ->
-  Namespace = erlsom_lib:tagNamespace(Tag, NS),
+  Namespace = ws_erlsom_lib:tagNamespace(Tag, NS),
   case Namespaces of
     "##local" -> 
       case Namespace of
@@ -799,7 +803,7 @@ translateAttribute(#attrib{name=Name, optional=Optional, type = Type, ref = unde
   {[#att{nm = list_to_atom(Name), nr = SeqNo, opt = trueFalse(Optional), tp = attributeType(Type)}], undefined};
 
 translateAttribute(#attrib{ref = Ref, optional = Optional}, SeqNo, Info= #schemaInfo{namespaces=NS}, _Count) ->
-  Name = erlsom_lib:makeAttrRef(Ref, NS),
+  Name = ws_erlsom_lib:makeAttrRef(Ref, NS),
   %% debug(Info#schemaInfo.atts),
   case lists:keysearch(Name, #attrib.name, Info#schemaInfo.atts) of
     {value, #attrib{name = Name, type=Type, optional=Optional2}} ->
@@ -810,7 +814,7 @@ translateAttribute(#attrib{ref = Ref, optional = Optional}, SeqNo, Info= #schema
         Name == "xml:lang" ->
           {[#att{nm = list_to_atom(Name), nr = SeqNo, opt = trueFalse(Optional), tp = 'char'}], undefined};
         true ->
-          throw({error, "Attribute not found: " ++ erlsom_lib:makeAttrRef(Ref, NS)})
+          throw({error, "Attribute not found: " ++ ws_erlsom_lib:makeAttrRef(Ref, NS)})
       end
   end;
 
@@ -818,7 +822,7 @@ translateAttribute(#attrib{ref = Ref, optional = Optional}, SeqNo, Info= #schema
 translateAttribute(#attributeGroupRefType{ref=Ref}, SeqNo, Info = #schemaInfo{namespaces=NS}, Count) ->
   %% look for atributeGroup
   %% -record(attGrp, {name, atts, anyAttr}).
-  case lists:keysearch(erlsom_lib:makeAttrRef(Ref, NS), #attGrp.name, Info#schemaInfo.attGrps) of
+  case lists:keysearch(ws_erlsom_lib:makeAttrRef(Ref, NS), #attGrp.name, Info#schemaInfo.attGrps) of
     {value, #attGrp{atts = Attrs, anyAttr = AnyAttrValue}} ->
       %% translate recursively
       {Attributes, AnyAttr} = translateAttributes(Attrs, {[], undefined}, SeqNo, Info, Count + 1),
@@ -832,14 +836,14 @@ translateAttribute(#attributeGroupRefType{ref=Ref}, SeqNo, Info = #schemaInfo{na
       %% debug(Info#schemaInfo.attGrps),
       %% debug(Ref),
       %% debug(NS),
-      throw({error, "Attribute group not found: " ++ erlsom_lib:makeAttrRef(Ref, NS)})
+      throw({error, "Attribute group not found: " ++ ws_erlsom_lib:makeAttrRef(Ref, NS)})
   end.
 
 attributeType(undefined) -> 'char';
 attributeType(#qname{uri = NS, localPart = Local}) -> 
   case NS of
     "http://www.w3.org/2001/XMLSchema" ->
-      erlsom_lib:translateType(Local);
+      ws_erlsom_lib:translateType(Local);
     _Else ->
       'char'
   end.
