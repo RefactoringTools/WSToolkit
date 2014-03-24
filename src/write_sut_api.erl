@@ -87,6 +87,7 @@ test3()->
       "http://localhost:8082/vodkatv/",
       "vodkatv_sut.erl").
 
+
 %%@doc Generates the WS connector module. The WS connector module
 %%     defines a collection of connector functions that are used by
 %%     QuickCheck to invoke web service operations. There is a connector
@@ -108,6 +109,7 @@ test3()->
 write_sut_api(HrlFile, WsdlFile, XsdFile, BaseURL, OutFile) ->
     {ok, Model} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = ws_erlsom:add_xsd_model(Model),
+    io:format("DDD\n"),
     Result=ws_erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
@@ -204,6 +206,7 @@ create_heading(HrlFile, XsdFile, BaseURL, FAs, OutFile)->
         "-include_lib(\"erlsom/include/erlsom_parse.hrl\").\n\n"
         "-define(BASE_URL, "++"\""++BaseURL++"\").\n"
         "-define(XSD_File, "++"\""++XsdFile++"\").\n\n"
+        "-define(NS, \"ns0\").\n\n"
         "-export(["++Exports++"]).\n\n".
         
 mk_exports([]) ->
@@ -225,12 +228,51 @@ util_funs() ->
 generate_post_params() ->
     "\n"
     "generate_post_params(ParamType, Values)->\n"
-    "    NS = \"ns0\",\n"
-    "    Data=list_to_tuple([list_to_atom(NS ++ \":\" ++ atom_to_list(ParamType)),\n"
-    "                       []|Values]),\n"
-    "    {ok, Model}=erlsom:compile_xsd_file(?XSD_File, [{prefix, NS}]),\n"
-    "    {ok, Doc}=erlsom:write(Data, Model),\n"
-    "    Doc.\n\n".
+    "   {ok, Model}=erlsom:compile_xsd_file(?XSD_File, [{prefix, ?NS}]),\n"
+    "   Types = get_records_from_model(Model),\n"
+    "   Data=list_to_tuple([add_namespace(ParamType),[] |\n"
+    "   add_namespace_to_values(Values, Types)]),\n"
+    "   {ok, Doc}=erlsom:write(Data, Model),\n"
+    "   Doc.\n"
+    "\n"
+    "add_namespace(ParamType) ->\n"
+    "   list_to_atom(?NS ++ \":\" ++ atom_to_list(ParamType)).\n"
+    "\n"
+    "add_namespace_to_record(T) ->\n"
+    "   [ParamType | Data] = tuple_to_list(T),\n"
+    "   list_to_tuple([add_namespace(ParamType) | Data]).\n"
+    "\n"
+    "add_namespace_to_values([], _Types)->\n"
+    "   [];\n"
+    "\n"
+    "add_namespace_to_values([[V | Vs]], Types) ->\n"
+    "   [add_namespace_to_values([V | Vs], Types)];\n"
+    "\n"
+    "add_namespace_to_values([V | Vs], Types) when is_tuple(V) ->\n"
+    "   case is_record_from_model(V, Types) of\n"
+    "     false ->\n"
+    "       [V | add_namespace_to_values(Vs, Types)];\n"
+    "     true ->\n"
+    "       [add_namespace_to_record(V) |\n"
+    "        add_namespace_to_values(Vs,Types)]\n"
+    "end;\n"
+    "\n"
+    "add_namespace_to_values([V | Vs], Types) ->\n"
+    "   [V|add_namespace_to_values(Vs, Types)].\n"
+    "\n"
+    "is_record_from_model([T], Types) ->\n"
+    "   is_record_from_model(T, Types);\n"
+    "\n"
+    "is_record_from_model(T, Types) ->\n"
+    "   lists:any(fun(Type) ->\n"
+    "                 is_record(add_namespace_to_record(T), Type)\n"
+    "             end, Types).\n"
+    "\n"
+    "get_records_from_model(Model) ->\n"
+    "    Types = Model#model.tps,\n"
+    "    [Type#type.nm || Type <- Types]."
+    "\n".
+
 
 process_response() ->
     "\n"
@@ -244,6 +286,8 @@ process_response() ->
                 
 
 get_param_field_names(TypeName, _DataModel=#model{tps = Types}) ->
+    io:format("TypeName:~p\n", [TypeName]),
+    io:format("DataModel:~p\n", [_DataModel]),
     DocType = lists:keyfind('_document', #type.nm,Types),
     DocAlts = lists:append([E#el.alts||E<-DocType#type.els]),
     Type=case lists:keyfind(TypeName, #alt.tag, DocAlts) of 
