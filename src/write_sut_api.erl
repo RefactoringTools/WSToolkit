@@ -48,7 +48,7 @@ vodkatv_sut() ->
       "vodkatv.hrl",
       "../tests/vodkatv/vodkatv2.wsdl",
       "../tests/vodkatv/vodkatv.xsd",
-      "http://10.121.55.32:8082/vodkatv/",
+      "http://193.144.63.20:8081/vodkatv/",
       "vodkatv_sut.erl").
 
 %%@private
