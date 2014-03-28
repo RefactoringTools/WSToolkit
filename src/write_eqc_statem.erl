@@ -97,12 +97,12 @@ test3() ->
                        OutFile::file:filename()) ->
                               ok |{error, Error::term()}.
 write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, Style, OutFile) ->
-    {ok, Model} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
-    Model1 = ws_erlsom:add_xsd_model(Model),
-    Result=ws_erlsom:parse_file(WsdlFile, Model1),
+    {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    Model1 = erlsom:add_xsd_model(Model),
+    Result=erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
-            {ok, DataModel} = ws_erlsom:compile_xsd_file(XsdFile),
+            {ok, DataModel} = erlsom:compile_xsd_file(XsdFile),
             Choice = Res#'DescriptionType'.choice, 
             write_eqc_statem_1(Choice, DataModel, WsdlFile, XsdFile,HrlFile, SUT, OutFile, Style);
         {error, Error} -> 
@@ -391,13 +391,13 @@ write_an_attribute(_A=#att{nm = Name, tp=_Type}) ->
     "gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()".
     
 write_name_without_prefix(Name, true) ->
-    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()"; 
 write_name_without_prefix(Name, false) ->
-    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"()";
 write_name_without_prefix(Name, _Max) ->
-    L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+    L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()".
    
 create_heading(HrlFile,SUT, OutFile)->
