@@ -109,7 +109,6 @@ test3()->
 write_sut_api(HrlFile, WsdlFile, XsdFile, BaseURL, OutFile) ->
     {ok, Model} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = ws_erlsom:add_xsd_model(Model),
-    io:format("DDD\n"),
     Result=ws_erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
@@ -290,8 +289,6 @@ process_response() ->
                 
 
 get_param_field_names(TypeName, _DataModel=#model{tps = Types}) ->
-    io:format("TypeName:~p\n", [TypeName]),
-    io:format("DataModel:~p\n", [_DataModel]),
     DocType = lists:keyfind('_document', #type.nm,Types),
     DocAlts = lists:append([E#el.alts||E<-DocType#type.els]),
     Type=case lists:keyfind(TypeName, #alt.tag, DocAlts) of 
