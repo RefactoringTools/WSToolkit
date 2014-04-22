@@ -66,7 +66,7 @@ test1() ->
                        OutFile::file:filename()) ->
                               {ok, [term()]}|{error, term()}.
 gen_refac_script({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}, OutFile) ->         
-    {ok, APIChanges} = ws_diff:ws_diff({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}),
+    {ok, APIChanges, _TypeChanges} = ws_diff:ws_diff({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}),
     RefacCmds=gen_refac_cmds(APIChanges, [], []),
     Content=gen_composite_refac(none, RefacCmds, OutFile),
     file:write_file(OutFile, list_to_binary(Content)).
