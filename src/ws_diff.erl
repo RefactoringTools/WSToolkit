@@ -40,6 +40,8 @@
 
 -compile(export_all).
 
+gen_diff() ->
+    gen_diff("./2013-05-05", "./2014-02-17").
 
 gen_diff(Dir1, Dir2) ->
     ws_diff({Dir1++"/vodkatv.wsdl", Dir1++"/vodkatv.xsd"},
@@ -64,11 +66,13 @@ test() ->
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
                      {ok, [term()]}|{error, term()}.
 ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
-    {ok, _OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
-    {ok, _NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
+    {ok, OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
+    {ok, NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
+    TypeChanges = levenshtein_dist(OldTypes, NewTypes),
     APIChanges =levenshtein_dist(OldAPIs, NewAPIs),
     APIChanges1=analyze_api_changes(APIChanges),
-    {ok, APIChanges1}.
+    TypeChanges1 = analyze_type_changes(TypeChanges),
+    {ok, APIChanges1, TypeChanges1}.
 
 
 analyze_model(XsdFile, WsdlFile) ->
@@ -81,7 +85,8 @@ analyze_model(XsdFile, WsdlFile) ->
         {ok, Res} ->
             {ok, DataModel} = gen_xsd_model:gen_xsd_model(XsdFile),
             #model{tps=Types0} = DataModel,
-            Types =[T||T<-Types0, T#type.nm/='_document'],
+            Types =[{T#type.nm, T#type.els, T#type.atts}
+                    ||T<-Types0, T#type.nm/='_document'],
             Choice = Res#'DescriptionType'.choice, 
             Interface=lists:keyfind('InterfaceType', 1, Choice),
             Binding = lists:keyfind('BindingType', 1, Choice),
@@ -139,9 +144,9 @@ analyze_api_changes_2([{'*', _E}|Others], InterfaceChanges, Acc) ->
    analyze_api_changes_2(Others, InterfaceChanges, Acc);
 analyze_api_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, Acc)->
     case lists:keyfind({d, E}, 1, ParaChanges) of 
-        {{d, E}, {i, E1}} ->
-            Res = analyze_input_output_change(E, E1),
-            analyze_api_changes_2(Others, InterfaceChanges, [{api_parameter_changed, E, E1, Res}|Acc]);
+        {{d, E={N, I, O, _}}, {i, E1={N1, I1, O1, _}}} ->
+            Res = analyze_input_output_change({N, I, O}, {N1, I1, O1}),
+            analyze_api_changes_2(Others, InterfaceChanges, [{changed, E, E1, Res}|Acc]);
         false ->
             case lists:keyfind({d,E}, 1, Renames) of 
                 {{d, E}, {i, E1}} ->
@@ -155,8 +160,9 @@ analyze_api_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, 
 analyze_api_changes_2([{i,E}|Others], InterfaceChanges, Acc) ->
     analyze_api_changes_2(Others,  InterfaceChanges, [{api_added, E}|Acc]).
        
-analyze_input_output_change({_APIName1, Input1, Output1, _}, 
-                            {_APIName2, Input2, Output2, _}) ->
+    
+analyze_input_output_change({_APIName1, Input1, Output1}, 
+                            {_APIName2, Input2, Output2}) ->
     InputChanges =levenshtein_dist(Input1, Input2),
     InputChanges1 = analyze_input_output_changes(InputChanges, Input1,  in),
     OutputChanges =levenshtein_dist(Output1, Output2),
@@ -229,17 +235,17 @@ analyze_input_output_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, R
     Changes = ParaChanges++Renames,
     case lists:keyfind({d,E}, 1, Changes) of 
         false when Type==in->
-            analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{api_parameter_deleted, E}|Acc]);
+            analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{deleted, E}|Acc]);
         false when Type==out->
-            analyze_input_output_changes_2(Others, InterfaceChanges, Type,[{output_field_deleted, E}|Acc]);
+            analyze_input_output_changes_2(Others, InterfaceChanges, Type,[{deleted, E}|Acc]);
         {{d, E}, {i, E1}} when Type==in->
             case lists:member({{d, E}, {i, E1}}, ParaChanges) of 
                 true ->
                     analyze_input_output_changes_2(
-                      Others, InterfaceChanges, Type,[{api_parameter_type_changed, E, E1}|Acc]);
+                      Others, InterfaceChanges, Type,[{type_changed, E, E1}|Acc]);
                 false ->
                     analyze_input_output_changes_2(
-                      Others, InterfaceChanges, Type,[{api_parameter_renamed, E, E1}|Acc])
+                      Others, InterfaceChanges, Type,[{renamed, E, E1}|Acc])
             end;
         {{d, E}, {i, E1}} when Type==out->
             case lists:member({{d, E}, {i, E1}}, ParaChanges) of 
@@ -252,9 +258,9 @@ analyze_input_output_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, R
             end
     end;
 analyze_input_output_changes_2([{i,E}|Others], InterfaceChanges, in, Acc)->
-    analyze_input_output_changes_2(Others, InterfaceChanges, in, [{api_parameter_added, E}|Acc]);
+    analyze_input_output_changes_2(Others, InterfaceChanges, in, [{added, E}|Acc]);
 analyze_input_output_changes_2([{i,E}|Others], InterfaceChanges, out, Acc)->
-    analyze_input_output_changes_2(Others, InterfaceChanges, out, [{output_field_added, E}|Acc]).
+    analyze_input_output_changes_2(Others, InterfaceChanges, out, [{added, E}|Acc]).
         
 
 calc_api_dist({Name1, Input1, Output1, Method1}, {Name2, Input2, Output2, Method2}) ->
@@ -284,9 +290,101 @@ calc_api_dist({Name1, Type1}, {Name2, Type2}) ->
                true -> 0;
                _ -> 1
            end,
-    {NameDist, TypeDist}.
+    {NameDist, TypeDist};
+calc_api_dist(E1=#el{}, E2=#el{}) ->
+    case  E1==E2 of   %% need to be refined!!!
+        true ->
+            {0, 0};
+        false ->
+            {1, 1}
+    end.
+
   
     
+
+analyze_type_changes(Changes) ->
+    Res=analyze_type_changes_1(Changes, []),
+    analyze_type_changes_2(Res).
+
+analyze_type_changes_1([], Acc)->
+    lists:reverse(Acc);
+analyze_type_changes_1([{'*',E}|Others], Acc) ->
+    analyze_type_changes_1(Others, [{'*',E}|Acc]);
+analyze_type_changes_1([{i, E}|Others], Acc) ->
+    case lists:member({d, E}, Others) of 
+        true ->
+            Others1=lists:keyreplace(E, 2, Others, {'*', E}),
+            analyze_type_changes_1(Others1, Acc);
+        false -> 
+            analyze_type_changes_1(Others, [{i, E}|Acc])
+    end;
+analyze_type_changes_1([{d, E}|Others], Acc) ->
+    case lists:member({i, E}, Others) of 
+        true ->
+            Others1=lists:keyreplace(E, 2, Others, {'*', E}),
+            analyze_type_changes_1(Others1, Acc);
+        false -> 
+            analyze_type_changes_1(Others, [{d, E}|Acc])
+    end;
+analyze_type_changes_1([{s, E1, E2}|Others], Acc) ->
+    analyze_type_changes_1([{d, E1}, {i, E2}|Others], Acc).
+
+    
+analyze_type_changes_2(Changes) ->
+    Deletes = [{d, E}||{d, E}<-Changes],
+    Inserts = [{i, E}||{i, E}<-Changes],
+    DistMatrix=[{{d,E1}, {i, E2}, calc_type_dist(E1, E2)}
+            ||{d, E1}<-Deletes, {i, E2}<-Inserts],
+    ElemChanges = [{{d, E1},{i, E2}}||
+                      {{d, E1},{i, E2}, 
+                       {0, C, 0}}<-DistMatrix, C/=0],
+    AttrChanges = [{{d, E1},{i, E2}}||
+                      {{d, E1},{i, E2}, 
+                       {0, 0, C}}<-DistMatrix, C/0],
+    Renames = [{{d, E1}, {i, E2}}||
+                  {{d, E1},{i, E2}, {1,0,0}}<-DistMatrix],
+    FakeInserts = element(2, lists:unzip(ElemChanges)) ++
+        element(2, lists:unzip(Renames)) ++ 
+        element(2, lists:unzip(AttrChanges)),
+    Changes1 = Changes -- FakeInserts,
+    analyze_type_changes_2(Changes1, {ElemChanges++AttrChanges, Renames}, []).
+ 
+analyze_type_changes_2([], _InterfaceChanges, Acc) ->
+    lists:reverse(Acc);
+analyze_type_changes_2([{'*', _E}|Others], InterfaceChanges, Acc) ->
+   analyze_type_changes_2(Others, InterfaceChanges, Acc);
+analyze_type_changes_2([{d, E}|Others], InterfaceChanges={FieldChanges, Renames}, Acc) ->
+    case lists:keyfind({d, E}, 1, FieldChanges) of
+        {{d, E}, {i, E1}} ->
+            Res = analyze_input_output_change(E, E1),
+            analyze_type_changes_2(Others, InterfaceChanges, [{field_changed, E, E1, Res}|Acc]);
+        false ->
+            case lists:keyfind({d,E}, 1, Renames) of 
+                {{d, E}, {i, E1}} ->
+                    analyze_type_changes_2(
+                      Others, InterfaceChanges, 
+                      [{type_renamed, E, E1}|Acc]);
+                false ->
+                    analyze_type_changes_2(Others, InterfaceChanges, [{type_deleted, E}|Acc])
+            end
+    end;
+analyze_type_changes_2([{i,E}|Others], InterfaceChanges, Acc) ->
+    analyze_type_changes_2(Others,  InterfaceChanges, [{type_added, E}|Acc]).
+
+
+
+calc_type_dist({Name1, Elems1, Attrs1}, {Name2, Elems2, Attrs2}) ->
+    NameDist=case Name1==Name2 of 
+                 true -> 0;
+                 _ -> 1
+             end,
+    ElemDist =  length(Elems1--Elems2) + 
+        length(Elems2--Elems1),
+    AttrDist = length(Attrs1--Attrs2) + 
+        length(Attrs2--Attrs1),
+    {NameDist, ElemDist, AttrDist}.
+
+  
 get_element_names(Elems, AllTypes) ->
     lists:append([get_element_name(E, AllTypes)||E<-Elems]).
 
@@ -317,7 +415,13 @@ process_interface_and_binding(Interface, Binding, Model) ->
      ||{APIName, ParamType, ResponseType}<-APIInterface].
 
 process_interface_and_binding_1(APIName, ParamType, ResponseType, APIBinding, Model) ->
-    {APIName, Method, _URI} = lists:keyfind(APIName, 1, APIBinding),
+    Method = case lists:keyfind(APIName, 1, APIBinding) of 
+                 {APIName, Method1, _URI} ->
+                     Method1;
+                 _ -> 
+                    %% io:format("API does not have a method:~p\n", [APIName]),
+                     none
+             end,
     ParaTypeName= case ParamType of none -> none; 
                       _ -> list_to_atom(rm_prefix(ParamType))
                   end,
@@ -353,10 +457,14 @@ get_param_field_names(TypeName, _DataModel=#model{tps =Types}) ->
     AllTypes=[T#type.nm||T<-Types, 
                          not is_list(T#type.anyAttr) 
                              orelse lists:keyfind(is_simple_type,1,T#type.anyAttr)==false],
-    #type{nm=Type, els=Elems, atts=Attrs}=lists:keyfind(Type, #type.nm, Types),
-    Names1 = get_element_names(Elems, AllTypes),
-    Names2 = get_attr_names(Attrs, AllTypes),
-    Names1++Names2.
+    case lists:keyfind(Type, #type.nm, Types) of 
+        #type{nm=Type, els=Elems, atts=Attrs} ->
+            Names1 = get_element_names(Elems, AllTypes),
+            Names2 = get_attr_names(Attrs, AllTypes),
+            Names1++Names2;
+        false ->
+            []
+    end.
   
 rm_prefix(Type) ->
     lists:last(string:tokens(Type, [$:])).
