@@ -109,7 +109,6 @@ test3()->
 write_sut_api(HrlFile, WsdlFile, XsdFile, BaseURL, OutFile) ->
     {ok, Model} = ws_erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = ws_erlsom:add_xsd_model(Model),
-    io:format("DDD\n"),
     Result=ws_erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
@@ -131,7 +130,7 @@ write_sut_api_1(HrlFile, Choice, DataModel, XsdFile, BaseURL, OutFile) ->
 write_sut_api_2(HrlFile, APIInterface, APIBindings, DataModel, XsdFile, BaseURL, OutFile) ->
     UtilFuns=util_funs(),
     Res=[gen_sut_funs_1(I, APIBindings, DataModel)
-         ||I<-APIInterface],
+         ||I<-APIInterface]),
     {SUTs, FAs}=lists:unzip(Res),
     Heading=create_heading(HrlFile, XsdFile, BaseURL, FAs, OutFile),
     Content=Heading++lists:flatten(SUTs)++UtilFuns,
@@ -139,58 +138,65 @@ write_sut_api_2(HrlFile, APIInterface, APIBindings, DataModel, XsdFile, BaseURL,
    
                                                                
 gen_sut_funs_1({APIName, Param, Response}, APIBindings, DataModel) ->
-    {APIName, Method, URI} = lists:keyfind(APIName, 1, APIBindings),
-    APIName1=camelCase_to_camel_case(APIName),
-    ResponseRecordName=lists:last(string:tokens(Response, [$:])),
-    ResponseRecordStr = case ws_lib:is_upper(hd(ResponseRecordName)) of 
-                            true -> "'"++ResponseRecordName++"'";
-                            false -> ResponseRecordName
-                        end,
-    case Method of 
-        "POST" ->
-            ParaRecordName = lists:last(string:tokens(Param, [$:])),
-            ParaRecordStr=case ws_lib:is_upper(hd(ParaRecordName)) of 
-                              true -> "'"++ParaRecordName++"'";
-                              false -> ParaRecordName
-                          end,
-            FieldNames = get_param_field_names(list_to_atom(ParaRecordName), DataModel),
-            Params = gen_param_string(FieldNames),
-            Def=APIName1 ++ "(" ++ Params ++ ")->\n" ++
-                "    PostData = generate_post_params(" ++ ParaRecordStr
-                ++ ", [" ++ Params ++ "]),\n"
-                "    Url = ?BASE_URL++\"" ++ URI ++ "\",\n"
-                "    http_request('" ++ Method ++ "', Url, PostData,\n"
-                "                  fun(Data) -> \n"
-                "                      process_response(" ++ ResponseRecordStr ++ ", Data)\n"
-                "                  end).\n\n",
-            {Def, {list_to_atom(APIName1), length(FieldNames)}};
-        "GET" ->
-            case lists:member(Param, ["#none", '#none', 'none', "none"]) of 
-                true ->
-                    Def=APIName1++"()->\n" ++
-                        "    Url = ?BASE_URL++\"" ++ URI ++"\",\n"
-                        "    http_request('"++Method++"', Url,\n"
-                        "                  fun(Data) -> \n"
-                        "                       process_response("++ResponseRecordStr++", Data)\n"
-                        "                  end).\n\n",
-                    {Def, {list_to_atom(APIName1),0}};
-                _ ->
+    case lists:keyfind(APIName, 1, APIBindings) of 
+        false ->
+            io:format("Warning: no binding information found for API:~s\n", 
+                      [APIName]),
+            [];
+        {APIName, Method, URI} ->
+            {APIName, Method, URI} = lists:keyfind(APIName, 1, APIBindings),
+            APIName1=camelCase_to_camel_case(APIName),
+            ResponseRecordName=lists:last(string:tokens(Response, [$:])),
+            ResponseRecordStr = case ws_lib:is_upper(hd(ResponseRecordName)) of 
+                                    true -> "'"++ResponseRecordName++"'";
+                                    false -> ResponseRecordName
+                                end,
+            case Method of 
+                "POST" ->
                     ParaRecordName = lists:last(string:tokens(Param, [$:])),
-                    FieldNames = get_param_field_names(list_to_atom(ParaRecordName), DataModel),
                     ParaRecordStr=case ws_lib:is_upper(hd(ParaRecordName)) of 
-                                true -> "'"++ParaRecordName++"'";
-                                false -> ParaRecordName
-                            end,
+                                      true -> "'"++ParaRecordName++"'";
+                                      false -> ParaRecordName
+                                  end,
+                    FieldNames = get_param_field_names(list_to_atom(ParaRecordName), DataModel),
                     Params = gen_param_string(FieldNames),
                     Def=APIName1 ++ "(" ++ Params ++ ")->\n" ++
-                        "    GetParams = generate_get_params(" ++ ParaRecordStr
+                        "    PostData = generate_post_params(" ++ ParaRecordStr
                         ++ ", [" ++ Params ++ "]),\n"
-                        "    Url = add_get_params(?BASE_URL++\"" ++ URI ++ "\",GetParams),\n"
-                        "    http_request('" ++ Method ++ "', Url,\n"
+                        "    Url = ?BASE_URL++\"" ++ URI ++ "\",\n"
+                        "    http_request('" ++ Method ++ "', Url, PostData,\n"
                         "                  fun(Data) -> \n"
-                        "                      process_response("++ResponseRecordStr++", Data)\n"
+                        "                      process_response(" ++ ResponseRecordStr ++ ", Data)\n"
                         "                  end).\n\n",
-                    {Def, {list_to_atom(APIName1), length(FieldNames)}}
+                    [{Def, {list_to_atom(APIName1), length(FieldNames)}}];
+                "GET" ->
+                    case lists:member(Param, ["#none", '#none', 'none', "none"]) of 
+                        true ->
+                            Def=APIName1++"()->\n" ++
+                                "    Url = ?BASE_URL++\"" ++ URI ++"\",\n"
+                                "    http_request('"++Method++"', Url,\n"
+                                "                  fun(Data) -> \n"
+                                "                       process_response("++ResponseRecordStr++", Data)\n"
+                                "                  end).\n\n",
+                            [{Def, {list_to_atom(APIName1),0}}];
+                        _ ->
+                            ParaRecordName = lists:last(string:tokens(Param, [$:])),
+                            FieldNames = get_param_field_names(list_to_atom(ParaRecordName), DataModel),
+                            ParaRecordStr=case ws_lib:is_upper(hd(ParaRecordName)) of 
+                                              true -> "'"++ParaRecordName++"'";
+                                              false -> ParaRecordName
+                                          end,
+                            Params = gen_param_string(FieldNames),
+                            Def=APIName1 ++ "(" ++ Params ++ ")->\n" ++
+                                "    GetParams = generate_get_params(" ++ ParaRecordStr
+                                ++ ", [" ++ Params ++ "]),\n"
+                                "    Url = add_get_params(?BASE_URL++\"" ++ URI ++ "\",GetParams),\n"
+                                "    http_request('" ++ Method ++ "', Url,\n"
+                                "                  fun(Data) -> \n"
+                                "                      process_response("++ResponseRecordStr++", Data)\n"
+                                "                  end).\n\n",
+                            [{Def, {list_to_atom(APIName1), length(FieldNames)}}]
+                    end
             end
     end.
     
@@ -290,8 +296,6 @@ process_response() ->
                 
 
 get_param_field_names(TypeName, _DataModel=#model{tps = Types}) ->
-    io:format("TypeName:~p\n", [TypeName]),
-    io:format("DataModel:~p\n", [_DataModel]),
     DocType = lists:keyfind('_document', #type.nm,Types),
     DocAlts = lists:append([E#el.alts||E<-DocType#type.els]),
     Type=case lists:keyfind(TypeName, #alt.tag, DocAlts) of 
