@@ -128,10 +128,11 @@ write_eqc_statem_2(APIInterface, DataModel, WsdlFile,
     Heading=create_heading(HrlFile, SUT, OutFile),
     Content = Heading ++ Commands ++PreConds ++ 
         PostConds ++ NextState++ AdaptorFuns++ 
-        DataGens ++ UtilFuns,
+        DataGens++
+        UtilFuns,
     file:write_file(OutFile, list_to_binary(Content)).
-   
-                   
+  
+                
 gen_commands([],_DataModel, _Style, Acc)->
     Cmds=lists:append(lists:reverse(Acc)),
     "\n\n"
@@ -158,8 +159,10 @@ gen_a_command({APIName, Param, _Response}, Model, Style) ->
             ParamName = list_to_atom(lists:last(string:tokens(Param, [$:]))),
             Type = fetch_input_type(ParamName, Model),
             GenStrs = write_a_generator(Type, Style),
-            Params = concat_string(GenStrs),
-            "      {call, ?MODULE, "++APIName1++", ["++Params++"]}"
+            SymbolCall ="      {call, ?MODULE, "++APIName1++", [",
+            Prefix =lists:append(lists:duplicate(length(SymbolCall)-1, " ")),
+            Params = concat_string(GenStrs, Prefix),
+            SymbolCall++Params++"]}"
     end.
            
 
@@ -197,6 +200,8 @@ gen_preconditions([A|As], DataModel, Style, Acc) ->
 
 gen_a_precondition({APIName, ParamType, _Response}, DataModel, Style)->
     APIName1=camelCase_to_camel_case(APIName),
+    PreCondStr= "precondition(_S, {call, ?MODULE, "++APIName1 ++ ",\n"
+                "                 [",
     ParamStr = case  lists:member(ParamType, ["#none", '#none', 'none', "none"]) of
                    true -> "";
                    false ->
@@ -204,13 +209,13 @@ gen_a_precondition({APIName, ParamType, _Response}, DataModel, Style)->
                                      lists:last(
                                        string:tokens(ParamType, [$:]))),
                        FieldNames = get_param_field_names(ParamName, DataModel),
-                       Str=gen_param_string(FieldNames, true),
+                       Str=gen_param_string(FieldNames, length("precondition(_S, "), true, 1),
                        case Style of 
                            tuple -> "{"++Str++"}";
                            non_tuple -> Str
                        end
                end,
-    "precondition(_S, {call, ?MODULE, "++APIName1 ++ ", ["++ParamStr++"]})->\n"
+    PreCondStr++ParamStr++"]})->\n"
         "    true".
 
 
@@ -232,6 +237,8 @@ gen_postconditions([A|As], DataModel, Style, Acc) ->
 
 gen_a_postcondition({APIName, ParamType, _Response}, DataModel, Style)->
     APIName1=camelCase_to_camel_case(APIName),
+    PostCondStr= "postcondition(_S, {call, ?MODULE, "++APIName1 ++ ",\n"
+                 "                  [",
     ParamStr = case  lists:member(ParamType, ["#none", '#none', 'none', "none"]) of
                    true -> "";
                    false ->
@@ -239,13 +246,13 @@ gen_a_postcondition({APIName, ParamType, _Response}, DataModel, Style)->
                                      lists:last(
                                        string:tokens(ParamType, [$:]))),
                        FieldNames = get_param_field_names(ParamName, DataModel),
-                       Str=gen_param_string(FieldNames, true),
+                       Str=gen_param_string(FieldNames, length("postcondition(_S, "), true, 1),
                        case Style of
                            tuple -> "{"++Str++"}";
                            non_tuple -> Str
                        end
                end,
-    "postcondition(_S, {call, ?MODULE, "++APIName1 ++ ", ["++ParamStr++"]}, Result)->\n"
+    PostCondStr++ParamStr++"]}, Result)->\n"
     "    Result /='response_data_does_not_conform_to_model'".
 
 
@@ -273,7 +280,7 @@ gen_an_adaptor_fun({APIName, ParamType, _Response}, DataModel, Style)->
                                      lists:last(
                                        string:tokens(ParamType, [$:]))),
                        FieldNames = get_param_field_names(ParamName, DataModel),
-                       Str=gen_param_string(FieldNames, false),
+                       Str=gen_param_string(FieldNames, length(APIName1), false,1),
                        case Style of 
                            tuple -> "{"++Str++"}";
                            non_tuple -> Str
@@ -301,6 +308,8 @@ gen_next_states([A|As], DataModel, Style, Acc) ->
 
 gen_a_next_state({APIName, ParamType, _Response}, DataModel, Style)->
     APIName1=camelCase_to_camel_case(APIName),
+    NextStateStr= "next_state(S, _R, {call, ?MODULE, "++APIName1 ++ ",\n"
+    "                 [",
     ParamStr = case  lists:member(ParamType, ["#none", '#none', 'none', "none"]) of
                    true -> "";
                    false ->
@@ -308,13 +317,13 @@ gen_a_next_state({APIName, ParamType, _Response}, DataModel, Style)->
                                      lists:last(
                                        string:tokens(ParamType, [$:]))),
                        FieldNames = get_param_field_names(ParamName, DataModel),
-                       Str=gen_param_string(FieldNames, true),
+                       Str=gen_param_string(FieldNames, length("next_state(S, _R,"),true,1),
                        case Style of
                            tuple -> "{"++Str++"}";
                            non_tuple -> Str
                        end
                end,
-    "next_state(S, _R, {call, ?MODULE, "++APIName1 ++ ", ["++ParamStr++"]})->\n"
+    NextStateStr++ParamStr++"]})->\n"
     "    S".
 
 write_a_generator(#type{nm = Name, tp=_Type, 
@@ -518,29 +527,34 @@ camelCase_to_camel_case_1([H|T], Acc) ->
     camelCase_to_camel_case_1(T, [H|Acc]).
     
 
-concat_string([]) ->
+concat_string([], _Prefix) ->
     "";
-concat_string([P]) ->
+concat_string([P], _Prefix) ->
     P;
-concat_string([H|T]) ->
-    H++", "++concat_string(T).
+concat_string([H|T], Prefix) ->
+    H++",\n "++Prefix++concat_string(T, Prefix).
     
-gen_param_string([], _) ->
+gen_param_string([], _, _, _) ->
     "";
-gen_param_string([P], WithUnderScore) ->
-    if is_atom(P) ->
-            to_upper(atom_to_list(P), WithUnderScore);
-       true ->
-            to_upper(P, WithUnderScore)
-    end;
-gen_param_string([H|T], WithUnderScore) ->
+gen_param_string([P], _Offset, WithUnderScore, _Cnt) ->
+     if is_atom(P) ->
+             to_upper(atom_to_list(P), WithUnderScore);
+        true ->
+             to_upper(P, WithUnderScore)
+     end;
+gen_param_string([H|T], Offset, WithUnderScore,Cnt) ->
+    Prefix=case (Cnt+1) rem 5 of
+               0 ->",\n "++lists:append(lists:duplicate(Offset, " "));
+               _ -> ", "
+           end,
     if is_atom(H) ->
             to_upper(atom_to_list(H), WithUnderScore)
-                ++", "++gen_param_string(T, WithUnderScore);
+                ++Prefix++gen_param_string(T, Offset, WithUnderScore,Cnt+1);
        true ->
-             to_upper(H, WithUnderScore)
-                ++", "++gen_param_string(T,WithUnderScore)
+            to_upper(H, WithUnderScore)
+                ++Prefix++gen_param_string(T, Offset,WithUnderScore, Cnt+1)
     end.
+
 to_upper([H|T],WithUnderScore) -> 
     case WithUnderScore of 
         true ->
