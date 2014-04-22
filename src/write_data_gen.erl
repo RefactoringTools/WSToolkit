@@ -107,16 +107,27 @@ write_data_generators_to_file(XsdFile, OutFile) ->
                             WsdlFile::file:filename()|none)
                            -> {ok, string()} | {error, Error::term()}.
 write_data_generators(XsdFile, WsdlFile) ->
+    case whereis(gen_keeper) of 
+        undefined -> ok;
+        _ -> unregister(gen_keeper)
+    end,
+    _Pid=spawn_link(fun() ->
+                      register(gen_keeper, self()),
+                           gen_keeper_loop([])
+              end),
     case gen_xsd_model:gen_xsd_model(XsdFile) of 
         {ok, Model} ->
             case WsdlFile of 
                 none ->
-                    {ok, write_data_generators_1(Model)};
+                    Res={ok, write_data_generators_1(Model)};
                 _ ->
                     InputDataTypes = get_input_data_types(WsdlFile, Model),
-                    {ok, write_data_generators_1(Model, InputDataTypes)}
-            end;
+                    Res={ok, write_data_generators_1(Model, InputDataTypes)}
+            end,
+            gen_keeper!stop,
+            Res;
         {error, Error} ->
+            gen_keeper!stop,
             {error, Error}
     end.
 
@@ -137,39 +148,38 @@ write_data_generators_1(#model{tps = Types}) ->
          "%%----------------------------------------------------------\n"
          "%% Data generators\n"
         "%%----------------------------------------------------------\n",
-    write_data_generators_2(Types, Acc).
+    write_data_generators_2(Types, Types, Acc).
 
 write_data_generators_1(#model{tps = Types},InputDataTypes) ->
     Acc = "%%% Data Generators.\n\n",
     AllInputTypes = get_all_input_types(InputDataTypes, Types), 
-    write_data_generators_2(AllInputTypes, Acc).
+    write_data_generators_2(AllInputTypes, Types,  Acc).
     
   
-write_data_generators_2(Types, Acc) ->
-    Generators=[write_a_data_gen(T)
-                ||T<-Types],
+write_data_generators_2(AllInputTypes, AllTypes, Acc) ->
+    Generators=[write_a_data_gen(T, AllTypes)
+                ||T <- AllInputTypes],
     Acc ++ lists:flatten(rm_duplicates(lists:append(Generators))).
         
 
-write_a_data_gen(#type{nm = '_document'}) ->
+write_a_data_gen(#type{nm = '_document'}, _) ->
     "";
-write_a_data_gen(Type) ->
+write_a_data_gen(Type, AllTypes) ->
     case ws_lib:is_simple_type(Type) of
         true ->
-            write_a_simple_gen(Type);
+            write_a_simple_gen(Type, AllTypes);
         false ->
-            write_a_complex_gen(Type)
+            write_a_complex_gen(Type, AllTypes)
     end.
-write_a_simple_gen(_T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = _Attributes}) ->
-    {_ElemNames, ElemDataGens} = lists:unzip(write_elements(Elements)),
+write_a_simple_gen(_T=#type{nm = _Name, els = Elements, mn=_Min, mx=_Max,atts = _Attributes}, AllTypes) ->
+    {_ElemNames, ElemDataGens} = lists:unzip(write_elements(Elements, AllTypes)),
     ElemDataGens.
 
-write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}) ->
+write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attributes}, AllTypes) ->
     Attrs= write_attributes(Attributes),
-    Elems = write_elements(lists:reverse(Elements)),
+    Elems = write_elements(lists:reverse(Elements), AllTypes),
     {AttrNames, AttrDataGens} = lists:unzip(Attrs),
     {ElemNames, ElemDataGens} = lists:unzip(Elems),
-    Head = "gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()",
     DataGens = lists:reverse(AttrDataGens)++
         lists:reverse(ElemDataGens),
     Body=case Type of 
@@ -182,86 +192,125 @@ write_a_complex_gen(_T=#type{nm = Name, tp=Type, els = Elements, atts = Attribut
              _ ->case length(Attrs++Elems) of 
                      1->
                          concat_string(["gen_"++camelCase_to_camel_case(N)++"()"
-                                        ||N<-AttrNames++ElemNames]);
+                                        ||N<-(AttrNames++ElemNames)]);
                      _ ->
+                         Prefix ="   ?LET({",
                          FieldNames = lists:reverse(AttrNames++ElemNames),
                          GenStr=concat_string(["gen_"++camelCase_to_camel_case(N)++"()"
-                                               ||N<-FieldNames]),
-                         Fields=gen_param_string(FieldNames),
-                         "\n   ?LET({"++Fields++"},\n"++
-                             "        {"++GenStr++"},\n"++
-                             "        {"++Fields++"})"
+                                               ||N <- FieldNames],length(Prefix)-1,3,0),
+                         Fields=gen_param_string(FieldNames,length(Prefix)-1,3,0),
+                         "\n" ++ Prefix ++ Fields ++ "},\n" ++
+                             "        {" ++ GenStr ++ "},\n" ++
+                             "        {" ++ Fields ++ "})"
                  end
          end,
-    ComplexGen = Head++"->"++Body++".\n\n",
+    Head = "gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()",
     case Head==Body of 
         true -> DataGens;
-        _ ->
-            [ComplexGen|DataGens]
+        _ ->            
+            Pid =whereis(gen_keeper),
+            Pid ! {check, self(), {atom_to_list(Name), Body}},
+            receive
+                {Pid, exist} ->
+                    DataGens;
+                _ ->
+                    ComplexGen = Head++"->"++Body++".\n\n",
+                    [ComplexGen|DataGens]
+            end
     end.
-    
   
-write_elements(Elements)  ->
-  write_elements(Elements, []).
-write_elements([],Acc) ->
+  
+write_elements(Elements, AllTypes)  ->
+  write_elements(Elements,  AllTypes, []).
+write_elements([], _AllTypes,Acc) ->
     lists:reverse(Acc);
-write_elements([Element|Tail], Acc) ->
-    case write_an_element(Element) of
+write_elements([Element|Tail], AllTypes, Acc) ->
+    case write_an_element(Element,  AllTypes) of
         {none, none} ->
-            write_elements(Tail, Acc);
+            write_elements(Tail, AllTypes, Acc);
         {Tag, String} ->
-            write_elements(Tail, [{Tag, String}|Acc]);
+            write_elements(Tail, AllTypes, [{Tag, String}|Acc]);
         _Others ->
-            write_elements(Tail, Acc)
+            write_elements(Tail, AllTypes, Acc)
     end.
-
     
-write_an_element(#el{alts = Alternatives, mn=Min, mx=Max})->
-    write_alternatives(Alternatives,{Min, Max}).
+write_an_element(#el{alts = Alternatives, mn=Min, mx=Max}, AllTypes)->
+    write_alternatives(Alternatives,{Min, Max}, AllTypes).
 
 %% easy case: 1 alternative (not a choice), 'real' element (not a group)
-write_alternatives([], _MinMax) ->
+write_alternatives([], _MinMax, _AllTypes) ->
     {none, none};  %% ToFix!
-write_alternatives([#alt{tag = '#any'}],_MinMax) ->
+write_alternatives([#alt{tag = '#any'}],_MinMax, _AllTypes) ->
     {none, none};
 write_alternatives([_A=#alt{tag = Tag, rl = true, tp=Type}], 
-                   {_Min, Max}) when Tag==Type andalso Max==1 ->
-    {none, none}; %%Checkthis!
-write_alternatives([A=#alt{tag = Tag, tp=_Type}], 
-                   {Min, Max}) ->
-    IsList = (Max == unbounded) orelse (Max>1),
-    case IsList of 
-        true ->
-            Tag1=list_to_atom(atom_to_list(Tag)++"_list"),
-            {Tag1, write_name_without_prefix(Tag, IsList) ++
-                 write_a_generator(A, {Min, Max})++
-                 ".\n\n"};
+                   {_Min, Max}, AllTypes) when Tag==Type andalso Max==1 ->
+    case lists:keyfind(Type, #type.nm, AllTypes) of 
         false ->
-            {Tag, write_name_without_prefix(Tag, IsList) ++
-                 write_a_generator(A, {Min, Max})++
-                 ".\n\n"}
+            {none, none};
+        T ->
+            %% {none, none}
+            Res=write_a_data_gen(T, AllTypes),
+            {atom_to_list(Tag), Res} %%Checkthis!
     end;
+ 
+write_alternatives([A=#alt{tag = Tag, tp=Type}], 
+                   {Min, Max}, AllTypes) ->
+    IsList = (Max == unbounded) orelse (Max>1),
+    TGens=case lists:keyfind(Type, #type.nm, AllTypes) of 
+              false -> "";
+              T -> write_a_data_gen(T, AllTypes)
+          end,
+    Body =write_a_generator(A, {Min, Max}),
+    Name=case IsList of 
+             true ->
+                 write_name_without_prefix(Tag, IsList);
+             false ->
+                 write_name_without_prefix(Tag, IsList)
+         end,
+    {Name1, Code1}=write_a_gen_fun(Name, Body),
+    {Name1, Code1++lists:flatten(TGens)};
+
+       
 %% more than 1 alternative: a choice
-write_alternatives([#alt{} | _Tail], _List) ->
+write_alternatives([#alt{} | _Tail], _List, _AllTypes) ->
     {none, none}. %%TO finished!
 
 write_attributes(Attributes) ->
     [write_an_attribute(A)||A<-Attributes].
 
 write_an_attribute(_A=#att{nm = Name, tp=Type}) ->
-    Head ="gen_"++camelCase_to_camel_case(atom_to_list(Name))++"()->",
     Body = write_gen(Type, []),
-    Code=Head++Body++".\n\n",
-    {Name, Code}.
+    {Name1, Code1}=write_a_gen_fun(atom_to_list(Name), Body),
+    {Name1, Code1}.
 
+write_a_gen_fun(Name, Body) ->
+    Pid = whereis(gen_keeper),
+    Pid ! {check, self(), {Name, Body}},
+    receive
+        {Pid, exist} ->
+            {Name, ""};
+        {Pid, NewName, code_exist} ->
+            {NewName, ""};
+        {Pid, NewName, code_does_not_exist} ->
+            Head="gen_"++camelCase_to_camel_case(
+                           NewName)++"()->",
+            {NewName, Head++Body++".\n\n"};
+        {Pid, none} ->
+            Head="gen_"++camelCase_to_camel_case(
+                           Name)++"()->",
+            {Name, Head++Body++".\n\n"}
+    end.
+ 
 write_a_generator(A=#alt{}, 
                   {ElemMin, ElemMax}) ->
     Gen=write_a_generator_1(A),
     case {ElemMin, ElemMax} of 
+        {0, 0} ->
+            "none";
         {1, 1} ->
             Gen;
         {1, unbounded} ->
-            "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
+            "eqc_gen:non_empty(eqc_gen:list("++Gen++"))";
         {1, unbound} ->
             "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
         {1, ElemMax} when is_integer(ElemMax) ->
@@ -289,21 +338,32 @@ write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix, anyInfo=Constrai
 write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix}) ->
     write_gen(Type,[]).
 
+%% write_name_without_prefix(Name, true) ->
+%%     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+%%     "gen_"++camelCase_to_camel_case(L)++"_list()->"; 
+%% write_name_without_prefix(Name, false) ->
+%%     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+%%     "gen_"++camelCase_to_camel_case(L)++"()->";
+%% write_name_without_prefix(Name, _Max) ->
+%%     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
+%%     "gen_"++camelCase_to_camel_case(L)++"_list()->".
+   
+
 write_name_without_prefix(Name, true) ->
     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
-    "gen_"++camelCase_to_camel_case(L)++"_list()->"; 
+    L++"List"; 
 write_name_without_prefix(Name, false) ->
     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
-    "gen_"++camelCase_to_camel_case(L)++"()->";
+    L;
 write_name_without_prefix(Name, _Max) ->
     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
-    "gen_"++camelCase_to_camel_case(L)++"_list()->".
-   
+    L++"List".
+
 write_enum_type(_Type, Enums) ->                         
     lists:flatten(io_lib:format("eqc_gen:oneof(~p)", [Enums])).
   
 write_gen({'#PCDATA', bool}, _Constraints) ->
-    "boolean()";
+    "bool()";
 write_gen({'#PCDATA', char}, []) ->
      "gen_lib:string()";
 write_gen(char, []) ->
@@ -482,8 +542,12 @@ camelCase_to_camel_case(Name) ->
     case Name of 
         [H|T] when (H >= 65) and (90 >= H)->
             camelCase_to_camel_case_1([H+32|T],[]);
-        [H|T] when H==45 ->
+        [H|T] when H==45->
             camelCase_to_camel_case_1([95|T],[]);
+        [H|T] when  H==47->
+            camelCase_to_camel_case_1([95|T],[]);
+        [H|T] when H==35 ->
+            camelCase_to_camel_case_1(T,[]);
         _  ->
             camelCase_to_camel_case_1(Name,[])
     end.
@@ -497,20 +561,34 @@ camelCase_to_camel_case_1([H|T], Acc)
             camelCase_to_camel_case_1(T, [H + (97 - 65) |Acc]);
         _ ->
             camelCase_to_camel_case_1(T, [H + (97 - 65), 95|Acc])
-    end;
+     end;
 camelCase_to_camel_case_1([H|T], Acc) when H==45->
     camelCase_to_camel_case_1(T, [95|Acc]);
+camelCase_to_camel_case_1([H|T], Acc) when H==47->
+    camelCase_to_camel_case_1(T, [95|Acc]);
+camelCase_to_camel_case_1([H|T], Acc) when H==35->
+    camelCase_to_camel_case_1(T, Acc);
 camelCase_to_camel_case_1([H|T], Acc)->
     camelCase_to_camel_case_1(T, [H|Acc]).
-    
-    
-gen_param_string([]) ->
+
+gen_param_string([],_,_NoCols, _) ->
     "";
-gen_param_string([P]) ->
+gen_param_string([P],_Offset,_NoCols, _Cnt) when is_atom(P) ->
     to_upper(atom_to_list(P));
-gen_param_string([H|T]) ->
-    to_upper(atom_to_list(H))
-        ++", "++gen_param_string(T).
+gen_param_string([P],_Offset,_NoCols, _Cnt) when is_list(P) ->
+    to_upper(P);
+gen_param_string([H|T],Offset,NoCols, Cnt) ->
+    Prefix=case (Cnt + 1) rem NoCols of
+               0 ->",\n "++lists:append(lists:duplicate(Offset, " "));
+               _ -> ", "
+           end,
+    if is_atom(H) ->
+            to_upper(atom_to_list(H))
+              ++ Prefix ++ gen_param_string(T,Offset,NoCols,Cnt+1);
+       true ->
+            to_upper(H)
+              ++ Prefix ++ gen_param_string(T,Offset,NoCols,Cnt+1)
+    end.
     
 to_upper([H|T]) -> 
     normalise([string:to_upper(H)|T]).
@@ -525,6 +603,18 @@ normalise([H|T]) ->
     end;
 normalise([]) ->[].
 
+
+concat_string([],_Offset,_NoCols, _Cnt) ->
+    "";
+concat_string([P],_Offset,_NoCols, _Cnt) ->
+    P;
+concat_string([H|T],Offset,NoCols, Cnt) ->
+    Prefix=case (Cnt+1) rem NoCols of
+               0 ->",\n "++lists:append(lists:duplicate(Offset, " "));
+               _ -> ", "
+           end,
+    H ++ Prefix ++ concat_string(T,Offset,NoCols,Cnt+1).
+    
 
 concat_string([]) ->
     "";
@@ -627,5 +717,41 @@ get_direct_dependent_types_1(#type{nm = _Name, tp=_Type,
     Attrs= [A#att.nm||A<-Attributes],
     Elems = [A#alt.tag||E<-Elements, A<-E#el.alts],
     Attrs ++ Elems.
-              
- 
+
+gen_keeper_loop(State) ->              
+    receive 
+        {check, From, {GenName, Code}} ->
+            case lists:keyfind(GenName, 1, State) of
+                {GenName, Code} ->
+                    From ! {self(),exist},
+                    gen_keeper_loop(State);
+                {GenName, _OtherCode} ->
+                    {NewGenName, CodeExist} = find_new_name({GenName, Code}, 1, State),
+                    case CodeExist of 
+                        true -> 
+                            From ! {self(), NewGenName, code_exist},
+                            gen_keeper_loop(State);
+                        false ->
+                            From ! {self(), NewGenName, code_does_not_exist},
+                            gen_keeper_loop([{NewGenName, Code}|State])
+                    end;
+                false ->
+                    From ! {self(),none},
+                    gen_keeper_loop([{GenName, Code}|State])
+            end;
+        stop ->
+            ok;
+        _Others ->
+            gen_keeper_loop(State)
+    end.
+
+find_new_name({GenName, Code}, Cnt, State) ->
+    NewGenName = GenName++ "_" ++ integer_to_list(Cnt),
+    case lists:keyfind(NewGenName, 1, State) of 
+        {NewGenName, Code} ->
+            {NewGenName, true};
+        {NewGenName, _OtherCode} ->
+            find_new_name({GenName, Code}, Cnt+1, State);
+        false ->
+            {NewGenName, false}
+    end.
