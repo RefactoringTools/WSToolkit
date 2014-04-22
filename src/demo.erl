@@ -24,3 +24,16 @@ gen_sut_api() ->
       "http://localhost:8082/vodkatv/",
       "vodkatv_sut.erl").
 
+
+gen_diff() ->
+    ws_diff:gen_diff("../tests/vodkatv-wsdl-evolution/2014-02-10", 
+             "../tests/vodkatv-wsdl-evolution/2014-02-17").
+
+
+gen_refac_script() ->
+    gen_refac_script:gen_refac_script(
+      {"../tests/vodkatv-wsdl-evolution/2014-02-10/vodkatv.wsdl", 
+       "../tests/vodkatv-wsdl-evolution/2014-02-10/vodkatv.xsd"}, 
+      {"../tests/vodkatv-wsdl-evolution/2014-02-17/vodkatv.wsdl",
+       "../tests/vodkatv-wsdl-evolution/2014-02-17/vodkatv.xsd"}, 
+      "refac_script.erl").
