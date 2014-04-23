@@ -26,14 +26,24 @@ gen_sut_api() ->
 
 
 gen_diff() ->
-    ws_diff:gen_diff("../tests/vodkatv-wsdl-evolution/2014-02-10", 
+    ws_diff:gen_diff("../tests/vodkatv-wsdl-evolution/2014-01-29", 
              "../tests/vodkatv-wsdl-evolution/2014-02-17").
 
 
 gen_refac_script() ->
     gen_refac_script:gen_refac_script(
-      {"../tests/vodkatv-wsdl-evolution/2014-02-10/vodkatv.wsdl", 
-       "../tests/vodkatv-wsdl-evolution/2014-02-10/vodkatv.xsd"}, 
+      {"../tests/vodkatv-wsdl-evolution/2014-01-29/vodkatv.wsdl", 
+       "../tests/vodkatv-wsdl-evolution/2014-01-29/vodkatv.xsd"}, 
       {"../tests/vodkatv-wsdl-evolution/2014-02-17/vodkatv.wsdl",
        "../tests/vodkatv-wsdl-evolution/2014-02-17/vodkatv.xsd"}, 
       "refac_script.erl").
+
+
+gen_eqc_statem_140129()->
+    write_eqc_statem:write_eqc_statem(
+      "../tests/vodkatv-wsdl-evolution/2014-01-29/vodkatv.wsdl", 
+      "../tests/vodkatv-wsdl-evolution/2014-01-29/vodkatv.xsd",
+      none, 
+      "vodkatv_sut",
+      non_tuple,
+      "vodkatv_eqc_140129.erl").
