@@ -338,17 +338,6 @@ write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix, anyInfo=Constrai
 write_a_generator_1(#alt{tag = _Tag, tp=Type, mn=_Min, mx=_Mix}) ->
     write_gen(Type,[]).
 
-%% write_name_without_prefix(Name, true) ->
-%%     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
-%%     "gen_"++camelCase_to_camel_case(L)++"_list()->"; 
-%% write_name_without_prefix(Name, false) ->
-%%     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
-%%     "gen_"++camelCase_to_camel_case(L)++"()->";
-%% write_name_without_prefix(Name, _Max) ->
-%%     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
-%%     "gen_"++camelCase_to_camel_case(L)++"_list()->".
-   
-
 write_name_without_prefix(Name, true) ->
     L=[_H|_] = ws_erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     L++"List"; 
