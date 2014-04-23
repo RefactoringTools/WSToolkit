@@ -41,6 +41,8 @@
 -include("../include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
+-define(Editor, emacs).
+
 %%@private
 test() ->
     gen_refac_script(
@@ -92,36 +94,36 @@ gen_composite_refacs(_TestFile, [], Acc)->
         ++append_strs(lists:reverse(Acc))
         ++"                ]).\n\n";
 gen_composite_refacs(TestFile, [{rm_operation, OpName}|Refacs], Acc) ->
-    Str=lists:flatten(io_lib:format("                 ?refac_(refac_rm_op, [File,\"~s\", [File]])", [OpName])),
+    Str=lists:flatten(io_lib:format("                 {refactoring, rm_op, [File,\"~s\", [File], ~p]}", [OpName, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{rm_argument, OpName, Index, _ArgName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 ?refac_(refac_rm_op_arg, [File,~p,~p, [File]])", 
-                          [OpName, Index])),
+                          "                 {refactoring, rm_op_arg, [File,~p,~p, [File], ~p]}", 
+                          [OpName, Index, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{rename_operation, OldOpName, Arity, NewOpName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 ?refac_(refac_rename_fun, [File,{~p,~p}, ~p, [File]])", 
-                          [OldOpName, Arity, NewOpName])),
+                          "                 {refactoring, rename_fun, [File,{~p,~p}, ~p, [File], ~p]}", 
+                          [OldOpName, Arity, NewOpName, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{rename_argument, OpName, Arity, Index, NewParName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 ?refac_(refac_rename_op_arg, [File,~p,~p,~p, ~p, [File]])", 
-                          [OpName, Arity, Index, NewParName])),
+                          "                 {refactoring, rename_op_arg, [File,~p,~p,~p, ~p, [File], ~p]}", 
+                          [OpName, Arity, Index, NewParName, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{add_operation, OpName, FieldNames}|Refacs], Acc) ->
-    Str=io_lib:format("                 ?refac_(refac_add_op, [File, ~p,~p, [File]])",
-                      [OpName, FieldNames]),
+    Str=io_lib:format("                 {refactoring, add_op, [File, ~p,~p, [File], ~p]}",
+                      [OpName, FieldNames, ?Editor]),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{add_argument, OpName, Index, ArgName, _ArgType}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 ?refac_(refac_add_op_arg, [File,~p,~p,~p, [File]])", 
-                          [OpName, Index, ArgName])),
+                          "                 {refactoring, add_op_arg, [File,~p,~p,~p, [File], ~p]}", 
+                          [OpName, Index, ArgName, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{swap_op_argument, OpName, NewOrder}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
-                          "                 ?refac_(refac_swap_op_arg, [File,~p,~p,[File]])", 
-                          [OpName, NewOrder])),
+                          "                 {refactoring, swap_op_args, [File,~p,~p,[File], ~p]}", 
+                          [OpName, NewOrder, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{type_change, _OpName, _ParName,_ParIndex, _ParType}|Refacs], Acc) ->
     gen_composite_refacs(TestFile, Refacs, Acc).
