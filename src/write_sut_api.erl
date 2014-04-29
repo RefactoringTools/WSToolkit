@@ -130,7 +130,7 @@ write_sut_api_1(HrlFile, Choice, DataModel, XsdFile, BaseURL, OutFile) ->
 write_sut_api_2(HrlFile, APIInterface, APIBindings, DataModel, XsdFile, BaseURL, OutFile) ->
     UtilFuns=util_funs(),
     Res=[gen_sut_funs_1(I, APIBindings, DataModel)
-         ||I<-APIInterface]),
+         ||I<-APIInterface],
     {SUTs, FAs}=lists:unzip(Res),
     Heading=create_heading(HrlFile, XsdFile, BaseURL, FAs, OutFile),
     Content=Heading++lists:flatten(SUTs)++UtilFuns,

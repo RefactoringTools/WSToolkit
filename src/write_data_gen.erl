@@ -92,7 +92,7 @@ write_data_generators_to_file(XsdFile, WsdlFile, OutFile) ->
 %%@see write_data_generators_to_file/3.
 -spec write_data_generators_to_file(XsdFile::file:filename(), 
                                     OutFile::file:filename()) 
-                                   -> ok | {error, Error::term()}.
+                                   -> ok | {error, Error::atom()}.
 write_data_generators_to_file(XsdFile, OutFile) ->
     write_data_generators_to_file(XsdFile, none, OutFile).
 
@@ -107,10 +107,7 @@ write_data_generators_to_file(XsdFile, OutFile) ->
                             WsdlFile::file:filename()|none)
                            -> {ok, string()} | {error, Error::term()}.
 write_data_generators(XsdFile, WsdlFile) ->
-    case whereis(gen_keeper) of 
-        undefined -> ok;
-        _ -> unregister(gen_keeper)
-    end,
+    catch unregister(gen_keeper),
     _Pid=spawn_link(fun() ->
                       register(gen_keeper, self()),
                            gen_keeper_loop([])
@@ -229,9 +226,7 @@ write_elements([Element|Tail], AllTypes, Acc) ->
         {none, none} ->
             write_elements(Tail, AllTypes, Acc);
         {Tag, String} ->
-            write_elements(Tail, AllTypes, [{Tag, String}|Acc]);
-        _Others ->
-            write_elements(Tail, AllTypes, Acc)
+            write_elements(Tail, AllTypes, [{Tag, String}|Acc])
     end.
     
 write_an_element(#el{alts = Alternatives, mn=Min, mx=Max}, AllTypes)->

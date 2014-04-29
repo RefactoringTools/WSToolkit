@@ -89,13 +89,13 @@ test3() ->
 %%     .hrl file is needed, and the name of the connector module as input,
 %%     and writes the `eqc_statem' module generated to `OutFile'.
 %%     This function assumes that the WSDL file follows wsdl2.0 standard.
--spec write_eqc_statem(WsdlFile::file:filename(),
+-spec write_eqc_statem(WsdlFile::file:filename()|none,
                        XsdFile::file:filename(),
                        HrlFile::file:filename()|none,
-                       SUT::module_name(),
-                       Style:: tuple|non_tuple,
+                       SUT::file:filename(),
+                       Style::tuple|non_tuple,
                        OutFile::file:filename()) ->
-                              ok |{error, Error::term()}.
+                              ok | {error, Error::term()}.
 write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, Style, OutFile) ->
     {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
     Model1 = erlsom:add_xsd_model(Model),
