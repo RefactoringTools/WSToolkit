@@ -36,8 +36,8 @@
 
 -export([test/0]).
 
--include("../include/erlsom_parse.hrl").
--include("../include/erlsom.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
 
 -compile(export_all).
 

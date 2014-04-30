@@ -34,9 +34,9 @@
 
 -export([test/0]).
 
--include("../include/erlsom_parse.hrl").
--include("../include/erlsom.hrl").
--include("../include/wsdl20.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
+-include("wsdl20.hrl").
 
 -compile(export_all).
 
