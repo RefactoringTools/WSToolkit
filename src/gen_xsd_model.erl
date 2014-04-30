@@ -54,7 +54,7 @@ test3() ->
     gen_xsd_model("../tests/vodkatv_sample/vodkatv.xsd").
                                  
 gen_xsd_model(XsdFile) ->
-    case ws_erlsom:compile_xsd_file(XsdFile, []) of
+    case erlsom:compile_xsd_file(XsdFile, []) of
         {ok, Model} ->
             {ParseRes, _}=xmerl_scan:file(XsdFile),
             %% currently does not work with nested defintions.
