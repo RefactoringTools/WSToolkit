@@ -305,13 +305,17 @@ write_a_generator(A=#alt{},
         {1, 1} ->
             Gen;
         {1, unbound} ->
-            "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
+            "eqc_gen:non_empty(eqc_gen:list("++Gen++"))";
+        {1, unbounded} ->
+            "eqc_gen:non_empty(eqc_gen:list("++Gen++"))";
         {1, ElemMax} when is_integer(ElemMax) ->
             "eqc_gen:non_empty(eqc_gen:resize("
                 ++integer_to_list(ElemMax)++", eqc_gen:list("++Gen++")))";
         {0,1}->
             "eqc_gen:oneof([none, "++Gen++"])";
         {0, unbound} ->
+            "eqc_gen:list("++Gen++")";
+        {0, unbounded} ->
             "eqc_gen:list("++Gen++")";
         {0,ElemMax} when is_integer(ElemMax)->
             "eqc_gen:resize("
