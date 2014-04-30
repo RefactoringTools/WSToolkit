@@ -64,7 +64,7 @@ test() ->
 %%     to be evaluated!
 -spec ws_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
-                     {ok, [term()]}|{error, term()}.
+                     {ok, [term()], [term()]}.
 ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
     {ok, OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
     {ok, NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
@@ -78,9 +78,9 @@ ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
 analyze_model(XsdFile, WsdlFile) ->
     LibDir = code:lib_dir('WSToolkit'),
     XsdDir =LibDir++"/priv/wsdl20.xsd",
-    {ok, Model} = ws_erlsom:compile_xsd_file(XsdDir),
-    Model1 = ws_erlsom:add_xsd_model(Model),
-    Result=ws_erlsom:parse_file(WsdlFile, Model1),
+    {ok, Model} = erlsom:compile_xsd_file(XsdDir),
+    Model1 = erlsom:add_xsd_model(Model),
+    Result=erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->
             {ok, DataModel} = gen_xsd_model:gen_xsd_model(XsdFile),
@@ -340,7 +340,7 @@ analyze_type_changes_2(Changes) ->
                        {0, C, 0}}<-DistMatrix, C/=0],
     AttrChanges = [{{d, E1},{i, E2}}||
                       {{d, E1},{i, E2}, 
-                       {0, 0, C}}<-DistMatrix, C/0],
+                       {0, 0, C}}<-DistMatrix, C/=0],
     Renames = [{{d, E1}, {i, E2}}||
                   {{d, E1},{i, E2}, {1,0,0}}<-DistMatrix],
     FakeInserts = element(2, lists:unzip(ElemChanges)) ++

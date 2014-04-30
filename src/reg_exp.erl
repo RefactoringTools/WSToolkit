@@ -24,7 +24,7 @@
 -import(lists, [reverse/1]).
 
 -type errordesc() :: term().
--opaque regexp() :: term().
+-type regexp() :: term().
 
 %% -type matchres() = {match,Start,Length} | nomatch | {error,E}.
 %% -type subres() = {ok,RepString,RepCount} | {error,E}.
