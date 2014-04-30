@@ -35,10 +35,10 @@
 -export([test/0, test1/0, test2/0, test3/0]).
 
 
--include("../include/erlsom_parse.hrl").
--include("../include/erlsom.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
--include("../include/wsdl20.hrl").
+-include("wsdl20.hrl").
 
 %%@private
 test()->
