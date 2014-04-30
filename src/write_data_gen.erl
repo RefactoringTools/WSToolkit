@@ -39,9 +39,9 @@
 
 -compile(export_all).
 
--include("../include/erlsom_parse.hrl").
--includeb("../include/erlsom.hrl").
--include("../include/wsdl20.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
+-include("wsdl20.hrl").
 -include_lib("eqc/include/eqc.hrl").
 
 %%@private
