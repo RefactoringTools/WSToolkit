@@ -59,7 +59,7 @@ update-deps:
 	$(REBAR) compile
 
 compile:
-	$(REBAR) -v skip_deps=true compile
+	$(REBAR) skip_deps=true compile
 
 doc:
 	$(REBAR) skip_deps=true doc
