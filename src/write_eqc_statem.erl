@@ -353,7 +353,7 @@ write_elements([Element | Tail], Acc) ->
 write_an_element(#el{alts = Alternatives, mn=_Min, mx=1})->
     write_alternatives(Alternatives, false);
 write_an_element(#el{alts = Alternatives, mn=_Min, mx=Max}) 
-  when Max==unbounded->
+  when Max==unbound->
     write_alternatives(Alternatives, true);
 write_an_element(#el{alts = Alternatives, mn=_Min, mx=Max})->
     if (is_integer(Max) andalso Max >1) ->

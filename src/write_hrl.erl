@@ -140,7 +140,7 @@ write_an_element(#el{alts = Alternatives, mn=Min, mx=Max}, AllTypes) ->
 write_alternatives([], _,  _AllTypes) ->
     {"any_strict_but_none_defined", ""};
 write_alternatives([#alt{tag = '#any'}], {_Min, Max},  _AllTypes) ->
-    if Max==unbounded orelse Max>1 ->
+    if Max==unbound orelse Max>1 ->
             {"any :: [any()]", ""};
        true ->
             {"any :: any()", ""}
@@ -239,14 +239,14 @@ write_alt_type(_A=#alt{tag =_Tag, tp=T, anyInfo=Constraints},  {Min, Max}, AllTy
     case {Min, Max} of  %% Min, Max are from elements attributed.
         {1, 1} ->
             {Type, ""};
-        {1, unbounded}->
+        {1, unbound}->
             {"nonempty_list("++Type++")", ""};
         {1, Max} when is_integer(Max) ->
             {"nonempty_list("++Type++")",  
              "MaxOccurs:" ++integer_to_list(Max)};
         {0, 1} ->
             {"none|"++Type, ""};
-        {0, unbounded} ->
+        {0, unbound} ->
             {"none|nonempty_list("++Type++")", ""};
         {0, Max} when is_integer(Max) ->
             {"none|nonempty_list("++Type++")",  "%% MaxOccurs:" ++integer_to_list(Max)}

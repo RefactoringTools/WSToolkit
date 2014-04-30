@@ -255,7 +255,7 @@ write_alternatives([_A=#alt{tag = Tag, rl = true, tp=Type}],
  
 write_alternatives([A=#alt{tag = Tag, tp=Type}], 
                    {Min, Max}, AllTypes) ->
-    IsList = (Max == unbounded) orelse (Max>1),
+    IsList = (Max == unbound) orelse (Max>1),
     TGens=case lists:keyfind(Type, #type.nm, AllTypes) of 
               false -> "";
               T -> write_a_data_gen(T, AllTypes)
@@ -309,8 +309,6 @@ write_a_generator(A=#alt{},
             "none";
         {1, 1} ->
             Gen;
-        {1, unbounded} ->
-            "eqc_gen:non_empty(eqc_gen:list("++Gen++"))";
         {1, unbound} ->
             "eqc_gen:non_empty(eqc_gen:list("++Gen++")";
         {1, ElemMax} when is_integer(ElemMax) ->
@@ -318,8 +316,6 @@ write_a_generator(A=#alt{},
                 ++integer_to_list(ElemMax)++", eqc_gen:list("++Gen++")))";
         {0,1}->
             "eqc_gen:oneof([none, "++Gen++"])";
-        {0, unbounded} ->
-            "eqc_gen:list("++Gen++")";
         {0, unbound} ->
             "eqc_gen:list("++Gen++")";
         {0,ElemMax} when is_integer(ElemMax)->
