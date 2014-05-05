@@ -2005,7 +2005,7 @@
             <xsd:element name="internalPort" type="xsd:integer" minOccurs="0" maxOccurs="1" />
             <xsd:element name="maxRequests" type="xsd:integer" minOccurs="0" maxOccurs="1" />
             <xsd:element name="maxInactivitySeconds" type="xsd:integer" minOccurs="0" maxOccurs="1" />
-            <xsd:element name="videoServerTypeType" type="xsd:string" minOccurs="0" maxOccurs="1" />
+            <xsd:element name="videoServerType" type="xsd:string" minOccurs="0" maxOccurs="1" />
             <xsd:element name="videoServerContent" type="xsd:string" minOccurs="0" maxOccurs="1" />
             <xsd:element name="networkArea" type="tns:networkAreaType" minOccurs="0" maxOccurs="1" />
             <xsd:element name="active" type="xsd:boolean" minOccurs="0" maxOccurs="1" />
@@ -2235,7 +2235,7 @@
         <xsd:sequence>
             <xsd:element name="vodkatvChannelId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="bahamasChannelId" type="xsd:string" minOccurs="0" maxOccurs="1"/>
-            <xsd:element name="channelTypeType" type="tns:channelTypeType" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="channelType" type="tns:channelType" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="accessType" type="xsd:string" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="name" type="xsd:string" minOccurs="0" maxOccurs="1" />
             <xsd:element name="description" type="xsd:string" minOccurs="0" maxOccurs="1" />
@@ -2309,7 +2309,7 @@
         </xsd:sequence>
     </xsd:complexType>
 
-    <xsd:simpleType name="channelTypeType">
+    <xsd:simpleType name="channelType">
         <xsd:restriction base="xsd:string">
         <xsd:enumeration value="VIDEO"/>
         <xsd:enumeration value="AUDIO"/>
@@ -2369,7 +2369,7 @@
             <xsd:element name="netPVRChannelName" type="xsd:string" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="preBufferNetPVRMillis" type="xsd:integer" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="position" type="xsd:integer" minOccurs="0" maxOccurs="1"/>
-            <xsd:element name="deviceType" type="tns:deviceTypeType" minOccurs="0" maxOccurs="1" />
+            <xsd:element name="deviceType" type="tns:deviceType" minOccurs="0" maxOccurs="1" />
             <xsd:element name="channelVideoPids" type="tns:channelVideoPidsType" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="channelAudioPids" type="tns:channelAudioPidsType" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="channelSourceURIs" type="tns:channelSourceURIsType" minOccurs="0" maxOccurs="1"/>
@@ -2386,7 +2386,7 @@
         </xsd:sequence>
     </xsd:complexType>
 
-    <xsd:complexType name="deviceTypeType">
+    <xsd:complexType name="deviceType">
         <xsd:sequence>
             <xsd:element name="deviceTypeId" type="xsd:integer" minOccurs="0" maxOccurs="1"/>
             <xsd:element name="userAgent" type="xsd:string" minOccurs="0" maxOccurs="1" />
