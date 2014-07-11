@@ -31,16 +31,14 @@
 %% ====================================================================
 -module(write_eqc_statem).
 
--export([write_eqc_statem/6]).
+-export([write_eqc_statem/5,
+         write_eqc_statem/6]).
 
 -export([test0/0, test1/0, test2/0, test3/0]).
 
 -include("../include/erlsom_parse.hrl").
 -include("../include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
-
--type module_name()::atom().
-
 
 %%@private
 test0() ->
@@ -49,7 +47,7 @@ test0() ->
       "../tests/weather/weather.xsd",
       none,
       "weather_sut",
-      tuple,
+      {non_grouping, tuple},
       "weather_test.erl").
      
 
@@ -60,7 +58,7 @@ test1() ->
       "../tests/bookstore_sample/booklist.xsd",
       none,
       "booklist_sut",
-      non_tuple,
+      {non_grouping, non_tuple},
       "booklist_test.erl").
      
 %%@private
@@ -70,18 +68,18 @@ test2() ->
       "../tests/bookstore_sample/booklist.xsd",
       none,
       "book_sut",
-      tuple,
+      {grouping, tuple},
       "book_test.erl").
  
 %%@private
 test3() ->
     write_eqc_statem(
-      "../tests/vodkatv_sample/vodkatv_expanded.wsdl", 
-      "../tests/vodkatv_sample/vodkatv.xsd",
-      none, %%"vodkatv.hrl",
-      "vaa_sut",
-      non_tuple,
-      "vaa_test.erl").
+      "../tests/vodkatv/vodkatv.wsdl", 
+      "../tests/vodkatv/vodkatv.xsd",
+      none, 
+      "vodkatv_sut",
+      {non_grouping,non_tuple},
+      "../tests/vodkatv/vodkatv_test.erl").
    
 %%@doc Generates the initial `eqc_statem' test module. This function 
 %%     takes the WSDL specification of the web service, the XSD schema,
@@ -93,7 +91,10 @@ test3() ->
                        XsdFile::file:filename(),
                        HrlFile::file:filename()|none,
                        SUT::file:filename(),
-                       Style::tuple|non_tuple,
+                       Style::{grouping, tuple}|
+                              {grouping, non_tuple}|
+                              {non_grouping, tuple}|
+                              {non_grouping, non_tuple},
                        OutFile::file:filename()) ->
                               ok | {error, Error::term()}.
 write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, Style, OutFile) ->
@@ -109,6 +110,9 @@ write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, Style, OutFile) ->
             throw({error, Error})
     end.
 
+write_eqc_statem(WsdlFile, XsdFile, SUT, Style, OutFile) ->
+    write_eqc_statem(WsdlFile, XsdFile, none, SUT, Style, OutFile).
+ 
 write_eqc_statem_1(Choice, DataModel, WsdlFile, XsdFile,HrlFile, SUT, OutFile, Style) ->
     Interface=lists:keyfind('InterfaceType', 1, Choice),
     APIInterface=process_interface(Interface),
@@ -117,7 +121,7 @@ write_eqc_statem_1(Choice, DataModel, WsdlFile, XsdFile,HrlFile, SUT, OutFile, S
     
 
 write_eqc_statem_2(APIInterface, DataModel, WsdlFile, 
-                   XsdFile, HrlFile, SUT, OutFile, Style) ->
+                   XsdFile, HrlFile, SUT, OutFile, {non_grouping, Style}) ->
     Commands =gen_commands(APIInterface, DataModel, Style, []),
     PreConds = gen_preconditions(APIInterface, DataModel, Style,[]),
     PostConds=gen_postconditions(APIInterface, DataModel, Style, []),
@@ -125,13 +129,24 @@ write_eqc_statem_2(APIInterface, DataModel, WsdlFile,
     AdaptorFuns = gen_adaptor_funs(APIInterface, DataModel, Style,[]),
     UtilFuns=util_funs(),
     {ok, DataGens}= write_data_gen:write_data_generators(XsdFile, WsdlFile),
-    Heading=create_heading(HrlFile, SUT, OutFile),
+    Heading=create_heading(HrlFile, SUT, OutFile, false),
     Content = Heading ++ Commands ++PreConds ++ 
         PostConds ++ NextState++ AdaptorFuns++ 
         DataGens++
         UtilFuns,
-    file:write_file(OutFile, list_to_binary(Content)).
+    file:write_file(OutFile, list_to_binary(Content));
   
+write_eqc_statem_2(APIInterface, DataModel, WsdlFile, 
+                   XsdFile, HrlFile, SUT, OutFile, {grouping, Style}) ->
+    CallBacks =gen_callbacks(APIInterface, DataModel, Style, []),
+    AdaptorFuns = gen_adaptor_funs(APIInterface, DataModel, Style,[]),
+    UtilFuns=util_funs(),
+    {ok, DataGens}= write_data_gen:write_data_generators(XsdFile, WsdlFile),
+    Heading=create_heading(HrlFile, SUT, OutFile, true),
+    Content = Heading ++ CallBacks++AdaptorFuns++ 
+        DataGens++UtilFuns,
+    file:write_file(OutFile, list_to_binary(Content)).
+ 
                 
 gen_commands([],_DataModel, _Style, Acc)->
     Cmds=lists:append(lists:reverse(Acc)),
@@ -140,7 +155,7 @@ gen_commands([],_DataModel, _Style, Acc)->
     "%% command\n"
     "%%----------------------------------------------------------\n"
     "command(_S)->\n"
-    "    oneof([\n"
+    "   oneof([\n"
         ++Cmds++
     "      ]).\n\n";    
 gen_commands([API],DataModel, Style, Acc) ->
@@ -152,16 +167,20 @@ gen_commands([A|As], DataModel, Style,Acc) ->
 
 gen_a_command({APIName, Param, _Response}, Model, Style) ->
     APIName1=camelCase_to_camel_case(APIName),
-    case lists:member(Param, ["#none", '#none', 'none', "none"]) of 
+    gen_command_body(Param, Model, Style, APIName1,6).
+
+gen_command_body(Param, Model, Style, APIName1, Indent) ->
+    Prefix = lists:duplicate(Indent, " "),
+    case lists:member(Param, ["#none", '#none', 'none', "none"]) of
         true ->
-            "      {call, ?MODULE, "++APIName1++", []}";
+            Prefix++"{call, ?MODULE, "++APIName1++", []}";
         _ ->
             ParamName = list_to_atom(lists:last(string:tokens(Param, [$:]))),
             Type = fetch_input_type(ParamName, Model),
             GenStrs = write_a_generator(Type, Style),
-            SymbolCall ="      {call, ?MODULE, "++APIName1++", [",
-            Prefix =lists:append(lists:duplicate(length(SymbolCall)-1, " ")),
-            Params = concat_string(GenStrs, Prefix),
+            SymbolCall =Prefix++"{call, ?MODULE, "++APIName1++", [",
+            Prefix1 =lists:append(lists:duplicate(length(SymbolCall)-1, " ")),
+            Params = concat_string(GenStrs, Prefix1),
             SymbolCall++Params++"]}"
     end.
            
@@ -191,16 +210,16 @@ gen_preconditions([], _, _Style, Acc)->
     "%%----------------------------------------------------------\n"
     ++CondCs++".\n\n"; 
 gen_preconditions([API],DataModel, Style, Acc) ->
-    Str=gen_a_precondition(API, DataModel, Style),
+    Str=gen_a_precondition(API, DataModel, Style, "precondition"),
     gen_preconditions([], DataModel, Style, [Str|Acc]);
 gen_preconditions([A|As], DataModel, Style, Acc) ->
-    Str=gen_a_precondition(A, DataModel, Style)++";\n",
+    Str=gen_a_precondition(A, DataModel, Style, "precondition")++";\n",
     gen_preconditions(As, DataModel, Style, [Str|Acc]).  
 
 
-gen_a_precondition({APIName, ParamType, _Response}, DataModel, Style)->
+gen_a_precondition({APIName, ParamType, _Response}, DataModel, Style, FunName)->
     APIName1=camelCase_to_camel_case(APIName),
-    PreCondStr= "precondition(_S, {call, ?MODULE, "++APIName1 ++ ",\n"
+    PreCondStr= FunName++"(_S, {call, ?MODULE, "++APIName1 ++ ",\n"
                 "                 [",
     ParamStr = case  lists:member(ParamType, ["#none", '#none', 'none', "none"]) of
                    true -> "";
@@ -228,16 +247,16 @@ gen_postconditions([], _, _,  Acc)->
     "%%----------------------------------------------------------\n"
     ++CondCs++".\n\n"; 
 gen_postconditions([API],DataModel, Style, Acc) ->
-    Str=gen_a_postcondition(API, DataModel, Style),
+    Str=gen_a_postcondition(API, DataModel, Style, "postcondition"),
     gen_postconditions([], DataModel, Style, [Str|Acc]);
 gen_postconditions([A|As], DataModel, Style, Acc) ->
-    Str=gen_a_postcondition(A, DataModel, Style)++";\n",
+    Str=gen_a_postcondition(A, DataModel, Style, "postcondition")++";\n",
     gen_postconditions(As, DataModel, Style, [Str|Acc]).  
 
 
-gen_a_postcondition({APIName, ParamType, _Response}, DataModel, Style)->
+gen_a_postcondition({APIName, ParamType, _Response}, DataModel, Style, CmdName)->
     APIName1=camelCase_to_camel_case(APIName),
-    PostCondStr= "postcondition(_S, {call, ?MODULE, "++APIName1 ++ ",\n"
+    PostCondStr= CmdName++"(_S, {call, ?MODULE, "++APIName1 ++ ",\n"
                  "                  [",
     ParamStr = case  lists:member(ParamType, ["#none", '#none', 'none', "none"]) of
                    true -> "";
@@ -254,6 +273,36 @@ gen_a_postcondition({APIName, ParamType, _Response}, DataModel, Style)->
                end,
     PostCondStr++ParamStr++"]}, Result)->\n"
     "    Result /='response_data_does_not_conform_to_model'".
+
+%% generating callback functions in a grouping style.
+gen_callbacks([], _, _, Acc) ->
+    Code = lists:append(lists:reverse(Acc)),
+    "\n\n"
+    "%%----------------------------------------------------------\n"
+    "%% grouped callback commands\n"
+    "%%----------------------------------------------------------\n"
+    ++Code;
+gen_callbacks([API], DataModel, Style, Acc)->
+    Str = gen_callbacks_for_a_command(API, DataModel, Style),
+    gen_callbacks([], DataModel, Style, [Str|Acc]);
+gen_callbacks([API|APIs], DataModel, Style, Acc) ->
+    Str = gen_callbacks_for_a_command(API, DataModel, Style)++"\n\n",
+    gen_callbacks(APIs, DataModel, Style, [Str|Acc]).
+
+gen_callbacks_for_a_command(API={APIName, Param, _Response}, Model, Style) ->
+    Postfix = ".\n",
+    APIName1=camelCase_to_camel_case(APIName),
+    Body=gen_command_body(Param, Model, Style, APIName1,4),
+    CmdCallBackName = APIName1++"_command",
+    Cmd=CmdCallBackName++"(_S)->\n"++Body++Postfix,
+    PreCondCmdName = APIName1++"_pre",
+    PreCond=gen_a_precondition(API, Model, Style, PreCondCmdName)++Postfix,
+    PostCondCmdName = APIName1++"_post",
+    PostCond = gen_a_postcondition(API, Model, Style, PostCondCmdName)++Postfix,
+    NextStateCmdName= APIName1++"_next",
+    NextState = gen_a_next_state(API,Model, Style, NextStateCmdName)++Postfix,
+    Cmd++PreCond++PostCond++NextState.
+    
 
 
 gen_adaptor_funs([], _, _, Acc)->
@@ -299,16 +348,16 @@ gen_next_states([], _, _, Acc)->
     "%%----------------------------------------------------------\n"
     ++CondCs++".\n\n"; 
 gen_next_states([API],DataModel, Style, Acc) ->
-    Str=gen_a_next_state(API, DataModel, Style),
+    Str=gen_a_next_state(API, DataModel, Style, "next_state"),
     gen_next_states([], DataModel, Style, [Str|Acc]);
 gen_next_states([A|As], DataModel, Style, Acc) ->
-    Str=gen_a_next_state(A, DataModel, Style)++";\n",
+    Str=gen_a_next_state(A, DataModel, Style, "next_state")++";\n",
     gen_next_states(As, DataModel, Style, [Str|Acc]).  
 
 
-gen_a_next_state({APIName, ParamType, _Response}, DataModel, Style)->
+gen_a_next_state({APIName, ParamType, _Response}, DataModel, Style, CmdName)->
     APIName1=camelCase_to_camel_case(APIName),
-    NextStateStr= "next_state(S, _R, {call, ?MODULE, "++APIName1 ++ ",\n"
+    NextStateStr= CmdName++"(S, _R, {call, ?MODULE, "++APIName1 ++ ",\n"
     "                 [",
     ParamStr = case  lists:member(ParamType, ["#none", '#none', 'none', "none"]) of
                    true -> "";
@@ -400,22 +449,28 @@ write_name_without_prefix(Name, _Max) ->
     L=[_H|_] = erlsom_lib:nameWithoutPrefix(atom_to_list(Name)),
     "gen_"++camelCase_to_camel_case(L)++"_list()".
    
-create_heading(HrlFile,SUT, OutFile)->
+create_heading(HrlFile,SUT, OutFile, Grouping)->
     BaseName = filename:basename(OutFile, ".erl"),
     IncludeHrl = case HrlFile of
                       none -> "";
                       _ -> "-include(\""++HrlFile++"\").\n"
                   end,
+    CallBacks= 
+        if Grouping ->
+                "";
+           true ->
+                "%% eqc callbacks \n"
+                    "-export([initial_state/0, command/1, precondition/2, \n"
+                    "         postcondition/3, next_state/3]).\n\n"
+        end,
     "-module("++BaseName++").\n\n" ++ IncludeHrl++
         "-include_lib(\"eqc/include/eqc.hrl\").\n"
         "-include_lib(\"eqc/include/eqc_statem.hrl\").\n\n"
         "-define(SUT, "++SUT++").\n\n"
         "%%Prop\n"
         "-export([prop_state_machine/0]).\n\n"
-        "-compile(export_all).\n\n"  
-        "%% eqc callbacks \n"
-        "-export([initial_state/0, command/1, precondition/2, \n"
-        "         postcondition/3, next_state/3]).\n\n"
+        "-compile(export_all).\n\n" ++  
+        CallBacks++
         "-record(state, {}).\n\n\n"
         "%%========================================================\n"
         "%% Prop\n"
