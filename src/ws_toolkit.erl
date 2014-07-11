@@ -35,7 +35,7 @@
          write_sut_api/5,
          write_sut_api/4,
          write_hrl_file/2,
-         ws_diff/2,
+         gen_diff/2,
          gen_refac_script/3]).
 
 -spec write_eqc_statem(WsdlFile::file:filename()|none,
@@ -73,10 +73,10 @@ write_sut_api(WsdlFile, XsdFile, BaseURL, OutFile) ->
 write_hrl_file(XsdFile, OutFile) -> 
     write_hrl:write_hrl_file(XsdFile, OutFile).
 
--spec ws_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
+-spec gen_diff({OldWsdl::file:filename(), Oldxsd::file:filename()},
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
                      {ok, [term()], [term()]}.
-ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
+gen_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
     ws_diff:ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}).
 
 
