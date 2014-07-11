@@ -41,7 +41,7 @@
 -include("../include/erlsom.hrl").
 -include("../include/wsdl20.hrl").
 
--define(Editor, emacs).
+-define(Editor, composite_emacs).
 
 %%@private
 test() ->
@@ -66,12 +66,17 @@ test1() ->
 -spec gen_refac_script({OldWsdl::file:filename(), Oldxsd::file:filename()},
                        {NewWsdl::file:filename(), NewXsd::file:filename()},
                        OutFile::file:filename()) ->
-                              {ok, [term()]}|{error, term()}.
+                              ok|{error, term()}.
 gen_refac_script({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}, OutFile) ->         
-    {ok, APIChanges, _TypeChanges} = ws_diff:ws_diff({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}),
+    {ok, APIChanges, _TypeChanges} = ws_diff:gen_ws_diff({WsdlFile1,XsdFile1}, {WsdlFile2,XsdFile2}),
     RefacCmds=gen_refac_cmds(APIChanges, [], []),
-    Content=gen_composite_refac(none, RefacCmds, OutFile),
-    file:write_file(OutFile, list_to_binary(Content)).
+    case RefacCmds of 
+        [] ->
+            io:format("No refactoring commands generated.");
+        _ ->
+            Content=gen_composite_refac(none, RefacCmds, OutFile),
+            file:write_file(OutFile, list_to_binary(Content))
+    end.
 
 gen_composite_refac(TestFile, RefacCmds, OutFile) ->
     Header = gen_header(OutFile),
@@ -98,6 +103,7 @@ gen_composite_refacs(TestFile, [{rm_operation, OpName}|Refacs], Acc) ->
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
 gen_composite_refacs(TestFile, [{rm_argument, OpName, Index, _ArgName}|Refacs], Acc) ->
     Str = lists:flatten(io_lib:format(
+                         %% "                 %%remove the ~pth parameter counting backwards.\n"
                           "                 {refactoring, rm_op_arg, [File,~p,~p, [File], ~p]}", 
                           [OpName, Index, ?Editor])),
     gen_composite_refacs(TestFile, Refacs, [Str|Acc]);
@@ -197,18 +203,18 @@ generate_interface_refac_cmd_1(APIName, [{'unchanged', {_, _}}|Others], Index, N
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, Acc);
 generate_interface_refac_cmd_1(APIName, [{'moved', _, _}|Others], Index, NumOfArgs, Acc) ->
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, Acc);
-generate_interface_refac_cmd_1(APIName, [{api_parameter_deleted, {ParName, _Type}}|Others], Index, NumOfArgs, Acc) ->
+generate_interface_refac_cmd_1(APIName, [{type_element_deleted, {ParName, _Type}}|Others], Index, NumOfArgs, Acc) ->
     Cmd = [{rm_argument, APIName, NumOfArgs-Index+1, ParName}],
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]);
-generate_interface_refac_cmd_1(APIName, [{api_parameter_added, {ParName, Type}}|Others], Index, NumOfArgs, Acc) ->
+generate_interface_refac_cmd_1(APIName, [{type_element_added, {ParName, Type}}|Others], Index, NumOfArgs, Acc) ->
     Cmd = [{add_argument, APIName, NumOfArgs-Index+1, to_upper(atom_to_list(ParName)), Type}],
     generate_interface_refac_cmd_1(APIName, Others, Index, NumOfArgs, [Cmd|Acc]);
-generate_interface_refac_cmd_1(APIName, [{api_parameter_renamed, {_ParName, _Type}, {NewParName, _}}|Others], 
+generate_interface_refac_cmd_1(APIName, [{type_element_renamed, {_ParName, _Type}, {NewParName, _}}|Others], 
                                Index, NumOfArgs, Acc) ->
     Cmd = [{rename_argument, APIName, NumOfArgs, Index,  
             to_upper(atom_to_list(NewParName))}],
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]);
-generate_interface_refac_cmd_1(APIName, [{api_parameter_type_changed, {ParName, _Type}, {ParName, NewType}}|Others],
+generate_interface_refac_cmd_1(APIName, [{type_element_changed, {ParName, _Type}, {ParName, NewType}}|Others],
                                Index, NumOfArgs, Acc) ->
     Cmd=[{type_change, APIName, ParName, Index, NewType}],
     generate_interface_refac_cmd_1(APIName, Others, Index+1, NumOfArgs, [Cmd|Acc]).
