@@ -13,7 +13,7 @@ gen_eqc_statem()->
       "../tests/vodkatv/vodkatv.xsd",
       none, 
       "vodkatv_sut",
-      tuple,
+      {non_grouping, tuple},
       "vodkatv_eqc.erl").
 
 gen_sut_api() ->
