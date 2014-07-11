@@ -30,7 +30,8 @@
 %% ====================================================================
 -module(write_sut_api).
 
--export([write_sut_api/5]).
+-export([write_sut_api/4,
+         write_sut_api/5]).
 
 -export([test0/0,
          test1/0,
@@ -46,7 +47,7 @@
 vodkatv_sut() ->
     write_sut_api(
       "vodkatv.hrl",
-      "../tests/vodkatv/vodkatv2.wsdl",
+      "../tests/vodkatv/vodkatv.wsdl",
       "../tests/vodkatv/vodkatv.xsd",
       "http://193.144.63.20:8081/vodkatv/",
       "vodkatv_sut.erl").
@@ -119,6 +120,9 @@ write_sut_api(HrlFile, WsdlFile, XsdFile, BaseURL, OutFile) ->
             throw({error, Error})
     end.
 
+write_sut_api(WsdlFile, XsdFile, BaseURL, OutFile) ->
+    write_sut_api(none, WsdlFile, XsdFile, BaseURL, OutFile).
+
 write_sut_api_1(HrlFile, Choice, DataModel, XsdFile, BaseURL, OutFile) ->
     Interface=lists:keyfind('InterfaceType', 1, Choice),
     Binding = lists:keyfind('BindingType', 1, Choice),
@@ -129,11 +133,13 @@ write_sut_api_1(HrlFile, Choice, DataModel, XsdFile, BaseURL, OutFile) ->
 
 write_sut_api_2(HrlFile, APIInterface, APIBindings, DataModel, XsdFile, BaseURL, OutFile) ->
     UtilFuns=util_funs(),
-    Res=[gen_sut_funs_1(I, APIBindings, DataModel)
-         ||I<-APIInterface],
+    Res=lists:append([gen_sut_funs_1(I, APIBindings, DataModel)
+                      ||I<-APIInterface]),
     {SUTs, FAs}=lists:unzip(Res),
-    Heading=create_heading(HrlFile, XsdFile, BaseURL, FAs, OutFile),
-    Content=Heading++lists:flatten(SUTs)++UtilFuns,
+    Heading=create_heading(HrlFile, XsdFile, BaseURL, 
+                           [{start, 0}|FAs], OutFile),
+    StartFun = start_fun(),
+    Content=Heading++StartFun++lists:flatten(SUTs)++UtilFuns,
     file:write_file(OutFile, list_to_binary(Content)).
    
                                                                
@@ -225,19 +231,29 @@ mk_exports([H|T]) ->
 format_fa({F,A}) ->
     atom_to_list(F)++"/"++integer_to_list(A).
 
+
+start_fun() ->
+   "\n"
+   "start() ->\n"
+   "     case lists:member(xsd_model, ets:all()) of \n"
+   "         false ->\n"
+   "             ets:new(xsd_model, [public,named_table]);\n"
+   "         true -> \n"
+   "             ok\n"
+   "     end.\n". 
+
 util_funs() ->
     "%%---------------------------------------------------------------\n"
-    "%% Utilities (move to another module?)\n"
+    "%% Utilities\n"
     "%%---------------------------------------------------------------\n"
     ++generate_post_params()++process_response()++http_request()++gen_params().
 
 generate_post_params() ->
     "\n"
     "generate_post_params(ParamType, Values)->\n"
-    "   {ok, Model}=erlsom:compile_xsd_file(?XSD_File, [{prefix, ?NS}]),\n"
-    "   Types = get_records_from_model(Model),\n"
-    "   Data=list_to_tuple([add_namespace(ParamType),[] |\n"
-    "                       add_namespace_to_values(Values, Types)]),\n"
+    "   Data=list_to_tuple([list_to_atom(?NS ++ \":\" ++atom_to_list(ParamType)),\n"
+    "                   []|Values]),\n"
+    "   Model=get_model_prefix(),\n"
     "   {ok, Doc}=erlsom:write(Data, Model),\n"
     "   Doc.\n"
     "\n"
@@ -287,7 +303,7 @@ generate_post_params() ->
 process_response() ->
     "\n"
     "process_response(_Type, Data) -> \n"
-    "    {ok, Model}=erlsom:compile_xsd_file(?XSD_File),\n"
+    "    Model=get_model(),\n"
     "    try erlsom:scan(Data, Model) of\n"
     "       {ok, Result, _} -> Result;\n"
     "       _    -> 'response_data_does_not_conform_to_model'\n"
@@ -486,5 +502,24 @@ gen_params()->
     "    [get_attr_name(A)||A<-Attrs].\n"
     "\n"
     "get_attr_name(#att{nm = Name}) ->\n"
-    "   {Name,1}.\n".
-
+    "   {Name,1}.\n"
+    "\n"
+    "get_model()->\n"
+    "    case ets:lookup(xsd_model, plain) of\n"
+    "        [] ->\n"
+    "            {ok, Model} = erlsom:compile_xsd_file(?XSD_File),\n"
+    "            ets:insert(xsd_model, {plain, Model}),\n"
+    "            Model;\n"
+    "        [{plain, Model}] ->\n"
+    "            Model\n"
+    "     end.\n"
+    "\n"
+    "get_model_prefix()->\n"
+    "    case ets:lookup(xsd_model, prefix) of \n"
+    "        [] ->\n"
+    "            {ok, Model} = erlsom:compile_xsd_file(?XSD_File, [{prefix, ?NS}]),\n"
+    "            ets:insert(xsd_model, {prefix, Model}),\n"
+    "            Model;\n"
+    "        [{prefix, Model}] -> \n"
+    "            Model\n"
+    "    end.\n".
