@@ -110,6 +110,7 @@ write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, Style, OutFile) ->
             throw({error, Error})
     end.
 
+
 write_eqc_statem(WsdlFile, XsdFile, SUT, Style, OutFile) ->
     write_eqc_statem(WsdlFile, XsdFile, none, SUT, Style, OutFile).
  
@@ -481,9 +482,7 @@ create_heading(HrlFile,SUT, OutFile, Grouping)->
         "      ?FORALL(\n"
         "         Cmds, commands(?MODULE),\n"
         "         begin\n"
-        "           setup(),\n"
         "           {_H, _S, Res} = run_commands(?MODULE, Cmds),\n"
-        "           teardown(),\n"
         "           Res==ok\n"
         "         end)).\n\n"
         "%%=========================================================\n"
@@ -501,6 +500,7 @@ util_funs() ->
     "%% Utilities\n"
     "%%---------------------------------------------------------------\n"
     "setup() -> \n"
+    "   ?SUT:start(),\n"
     "   fun teardown/0.\n\n"
     "teardown() ->\n"
     "   ok.".
