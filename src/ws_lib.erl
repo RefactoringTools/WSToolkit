@@ -34,8 +34,8 @@
 
 -compile(export_all).
 
--include("erlsom_parse.hrl").
--include("erlsom.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
 
 
 is_simple_type(#type{anyAttr=Attrs})->

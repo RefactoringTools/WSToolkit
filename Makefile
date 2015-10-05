@@ -17,8 +17,8 @@
 
 ERLFLAGS= -pa $(CURDIR)/.eunit -pa $(CURDIR)/ebin -pa $(CURDIR)/deps/*/ebin
 
-REBAR_REPO := https://github.com/rebar/rebar3.git
-# REBAR_VERSION := 3.0.0
+REBAR_REPO := https://github.com/rebar/rebar.git
+REBAR_VERSION := 2.6.1
 REBAR_REPO_DIR := rebar
 REBAR := $(REBAR_REPO_DIR)/rebar
 

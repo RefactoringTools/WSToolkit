@@ -40,9 +40,9 @@
 
 -compile(export_all).
 
--include("../include/erlsom_parse.hrl").
--include("../include/erlsom.hrl").
--include("../include/wsdl20.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
+-include("wsdl20.hrl").
 
 vodkatv_sut() ->
     write_sut_api(
@@ -108,7 +108,7 @@ test3()->
                     OutFile::file:filename())->
                            ok|{error, Error::term()}.
 write_sut_api(HrlFile, WsdlFile, XsdFile, BaseURL, OutFile) ->
-    {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    {ok, Model} = erlsom:compile_xsd_file("wsdl20.xsd"),
     Model1 = erlsom:add_xsd_model(Model),
     Result=erlsom:parse_file(WsdlFile, Model1),
     case Result of
@@ -133,11 +133,10 @@ write_sut_api_1(HrlFile, Choice, DataModel, XsdFile, BaseURL, OutFile) ->
 
 write_sut_api_2(HrlFile, APIInterface, APIBindings, DataModel, XsdFile, BaseURL, OutFile) ->
     UtilFuns=util_funs(),
-    Res=lists:append([gen_sut_funs_1(I, APIBindings, DataModel)
-                      ||I<-APIInterface]),
-    {SUTs, FAs}=lists:unzip(Res),
-    Heading=create_heading(HrlFile, XsdFile, BaseURL, 
-                           [{start, 0}|FAs], OutFile),
+
+    Res=[gen_sut_funs_1(I, APIBindings, DataModel) ||I<-APIInterface],
+    {SUTs, FAs}=lists:unzip(lists:flatten(Res)),
+    Heading=create_heading(HrlFile, XsdFile, BaseURL, [{start, 0}|FAs], OutFile),
     StartFun = start_fun(),
     Content=Heading++StartFun++lists:flatten(SUTs)++UtilFuns,
     file:write_file(OutFile, list_to_binary(Content)).

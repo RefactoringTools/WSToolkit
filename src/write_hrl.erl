@@ -36,8 +36,8 @@
 
 -export([test/0]).
 
--include("../include/erlsom_parse.hrl").
--include("../include/erlsom.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
 
 -compile(export_all).
 
@@ -96,8 +96,8 @@ write_a_type_def(Type, AllTypes)->
     end.
 
 %% a simple type.         
-write_a_type_type(_T=#type{nm = Name, els = Elements, mn=Min, mx=Max,atts = _Attributes}, AllTypes) ->
-    [#el{alts =[Alt], mn=Min, mx=Max}]=Elements,
+write_a_type_type(_T=#type{nm = Name, els = Elements, mn=_Min, mx=_Max,atts = _Attributes}, AllTypes) ->
+    [#el{alts =[Alt], mn=_Mn, mx=_Mx}|_]=Elements,
     {TypeDef, Comments} = write_alt_type(Alt,{1, 1}, AllTypes),
     WrittenType= "-type " ++ write_name(Name)++"()::"++TypeDef++"." ++ Comments++"\n\n",
     {Name, WrittenType, []}.

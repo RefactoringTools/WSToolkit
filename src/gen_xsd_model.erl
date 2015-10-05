@@ -35,10 +35,10 @@
 -export([test/0, test1/0, test2/0, test3/0]).
 
 
--include("../include/erlsom_parse.hrl").
--include("../include/erlsom.hrl").
+-include_lib("erlsom/include/erlsom_parse.hrl").
+-include_lib("erlsom/include/erlsom.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
--include("../include/wsdl20.hrl").
+-include("wsdl20.hrl").
 
 %%@private
 test()->
@@ -251,14 +251,17 @@ update_base_type_info_in_model(Model, Name0, BaseType) ->
     Types=Model#model.tps,
     case [T||T<-Types, T#type.nm==Name] of 
         [] -> Model;
-        [CurType] ->
-            #type{nm = Name, els = Elements, atts = _Attributes}=CurType,
-            [#el{alts =[Alt]}]=Elements,
-            NewAlt=Alt#alt{tp=list_to_atom(BaseType)},
-            NewElems=[#el{alts=[NewAlt]}],
-            NewType=CurType#type{els=NewElems},
-            NewTypes = lists:keyreplace(Name, 2, Types, NewType),
-            Model#model{tps=NewTypes}
+        CurTypes ->
+	    lists:foldl(fun(CurType, AModel) ->
+				#type{nm = Name, els = Elements, atts = _Attributes}=CurType,
+				[#el{alts =[Alt]}]=Elements,
+				NewAlt=Alt#alt{tp=list_to_atom(BaseType)},
+				NewElems=[#el{alts=[NewAlt]}],
+				NewType=CurType#type{els=NewElems},
+				NewTypes = lists:keyreplace(Name, 2, Types, NewType),
+				AModel#model{tps=NewTypes}
+			end,
+			Model, CurTypes)
     end.
 
 update_type_info_in_model(Model, Name0, Info) ->
@@ -266,18 +269,21 @@ update_type_info_in_model(Model, Name0, Info) ->
     Types=Model#model.tps,
     case [T||T<-Types, T#type.nm==Name] of 
         [] -> Model;
-        [CurType] ->
-            #type{nm = Name, els = Elements, atts = _Attributes}=CurType,
-            [#el{alts =[Alt]}]=Elements,
-            NewInfo =case Alt#alt.anyInfo of 
-                         undefined -> [Info];
-                         A when is_list(A) ->
-                             [Info|A]
-                     end,
-            NewAlt=Alt#alt{anyInfo=NewInfo},
-            NewElems=[#el{alts=[NewAlt]}],
-            NewType=CurType#type{els=NewElems},
-            NewTypes = lists:keyreplace(Name, 2, Types, NewType),
-            Model#model{tps=NewTypes}
+        CurTypes ->
+	    lists:foldl(fun(CurType, AModel) ->
+				#type{nm = Name, els = Elements, atts = _Attributes}=CurType,
+				[#el{alts =[Alt]}]=Elements,
+				NewInfo =case Alt#alt.anyInfo of
+					     undefined -> [Info];
+					     A when is_list(A) ->
+						 [Info|A]
+					 end,
+				NewAlt=Alt#alt{anyInfo=NewInfo},
+				NewElems=[#el{alts=[NewAlt]}],
+				NewType=CurType#type{els=NewElems},
+				NewTypes = lists:keyreplace(Name, 2, Types, NewType),
+				AModel#model{tps=NewTypes}
+			end,
+			Model, CurTypes)
     end.
 
