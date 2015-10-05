@@ -37,24 +37,34 @@
 
 %% integer generator.
 integer() ->
-    wsdlType(xint()).
+    eqc_gen:int().
 
 %% generates an integer according to the patttern.
 integer(Pattern) when is_list(Pattern)->
-    wsdlType(pattern(regexp_gen:from_string(Pattern), xint())).
+    ?LET({int,Value},
+	 wsdlType(pattern(regexp_gen:from_string(Pattern), xint())),
+	 Value).
 
 %% generates an integer within the range.
 integer(Min, Max) ->
-    wsdlType(wsdl_dsl:minInclusive(Min, wsdl_dsl:maxInclusive(Max, xint()))).
+    ?LET({int,Value},
+	 wsdlType(wsdl_dsl:minInclusive(Min, wsdl_dsl:maxInclusive(Max, xint()))),
+	 Value).
  
-%% generatea a printable string.
+%% generates a printable string.
 string() ->
-    wsdlType(wsdl_dsl:string()).
+    ?LET({string,Value},
+	 wsdlType(wsdl_dsl:string()),
+	 Value).
 
-%% generatea a string whose length is within the range.
+%% generates a string whose length is within the range.
 string(MinLen, MaxLen) ->
-    wsdlType(wsdl_dsl:minLength(MinLen, wsdl_dsl:maxLength(MaxLen, wsdl_dsl:string()))).
+    ?LET({string,Value},
+	 wsdlType(wsdl_dsl:minLength(MinLen, wsdl_dsl:maxLength(MaxLen, wsdl_dsl:string()))),
+	 Value).
 
-%% generatea a string according to a pattern.
+%% generates a string according to a pattern.
 string(Pattern) ->
-    wsdlType(pattern(regexp_gen:from_string(Pattern), wsdl_dsl:string())).
+    ?LET({string,Value},
+	 wsdlType(pattern(regexp_gen:from_string(Pattern), wsdl_dsl:string())),
+	 Value).

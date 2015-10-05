@@ -39,8 +39,6 @@
 -include_lib("erlsom/include/erlsom.hrl").
 -include("wsdl20.hrl").
 
--type module_name()::atom().
-
 
 %%@private
 test0() ->
@@ -97,9 +95,8 @@ test3() ->
                        OutFile::file:filename()) ->
                               ok | {error, Error::term()}.
 write_eqc_statem(WsdlFile, XsdFile,HrlFile, SUT, Style, OutFile) ->
-    {ok, Model} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    {ok, Model} = erlsom:compile_xsd_file("wsdl20.xsd"),
     Model1 = erlsom:add_xsd_model(Model),
-%    io:format("--> ~p~n", [Model1]),
     Result=erlsom:parse_file(WsdlFile, Model1),
     case Result of
         {ok, Res} ->

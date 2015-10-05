@@ -622,7 +622,7 @@ rm_duplicates_1([E|Elems], Acc) ->
     end.
 
 get_input_data_types(WsdlFile, Model) ->
-    {ok, Model1} = erlsom:compile_xsd_file("../priv/wsdl20.xsd"),
+    {ok, Model1} = erlsom:compile_xsd_file("wsdl20.xsd"),
     Model2 = erlsom:add_xsd_model(Model1),
     Result=erlsom:parse_file(WsdlFile, Model2),
     case Result of
@@ -683,16 +683,17 @@ get_all_input_types([T|Ts], AllTypes, Acc) ->
         {[], _} ->
             %% This should not happen!
             get_all_input_types(Ts, AllTypes, Acc);
-        {[T1], Deps}  ->
+        {T1, Deps}  ->
             NewTypes = Deps -- Acc,
-            get_all_input_types(NewTypes++Ts, AllTypes, [T1|Acc])
+            get_all_input_types(NewTypes++Ts, AllTypes, T1 ++ Acc)
     end.
 
 get_direct_dependent_types(T, AllTypes) -> 
     T1=[Type||Type<-AllTypes, Type#type.nm==T#type.nm],
     case T1 of
         [] -> {[], []};
-        [T2]->{T1,get_direct_dependent_types_1(T2)}
+        T2->{T1,
+	     lists:flatten([get_direct_dependent_types_1(Ti) || Ti <- T2])}
     end.
 
 get_direct_dependent_types_1(#type{nm = _Name, tp=_Type, 
