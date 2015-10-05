@@ -241,12 +241,16 @@ write_alt_type(_A=#alt{tag =_Tag, tp=T, anyInfo=Constraints},  {Min, Max}, AllTy
             {Type, ""};
         {1, unbound}->
             {"nonempty_list("++Type++")", ""};
+        {1, unbounded}->
+            {"nonempty_list("++Type++")", ""};
         {1, Max} when is_integer(Max) ->
             {"nonempty_list("++Type++")",  
              "MaxOccurs:" ++integer_to_list(Max)};
         {0, 1} ->
             {"none|"++Type, ""};
         {0, unbound} ->
+            {"none|nonempty_list("++Type++")", ""};
+        {0, unbounded} ->
             {"none|nonempty_list("++Type++")", ""};
         {0, Max} when is_integer(Max) ->
             {"none|nonempty_list("++Type++")",  "%% MaxOccurs:" ++integer_to_list(Max)}

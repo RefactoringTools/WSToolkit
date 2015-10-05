@@ -66,6 +66,13 @@ test() ->
               {NewWsdl::file:filename(), NewXsd::file:filename()}) ->
                      {ok, [term()], [term()]}.
 ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
+    {ok, APIChanges1, TypeChanges1} = 
+        gen_ws_diff({OldWsdl, OldXsd},{NewWsdl, NewXsd}),
+    display_api_changes(APIChanges1),
+    display_type_changes(TypeChanges1),
+    ok.
+
+gen_ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
     {ok, OldTypes, OldAPIs}=analyze_model(OldXsd, OldWsdl),
     {ok, NewTypes, NewAPIs}=analyze_model(NewXsd, NewWsdl),
     TypeChanges = levenshtein_dist(OldTypes, NewTypes),
@@ -74,6 +81,66 @@ ws_diff({OldWsdl, OldXsd}, {NewWsdl, NewXsd}) ->
     TypeChanges1 = analyze_type_changes(TypeChanges),
     {ok, APIChanges1, TypeChanges1}.
 
+
+display_api_changes(APIChanges) ->
+    case APIChanges of 
+        [] ->
+            io:format("\n            ****** API Changes: none ******\n\n");
+        _ ->
+            io:format("\n            ****** API Changes: ******\n\n"),
+            [display_an_api_change(APIChange)||APIChange<-APIChanges]
+    end.
+
+display_an_api_change({ChangeType=api_parameter_changed, E, E1, _Changes={In, Out}}) ->
+    io:format("\n***~p***:", [ChangeType]),
+    io:format("\nBefore:\n~p\n", [E]),
+    io:format("\nAfter:\n~p\n", [E1]),
+    InChanges =[{C,T}||{C, T}<-In, C/=unchanged],
+    OutChanges=[{C,T}||{C, T}<-Out, C/=unchanged],
+    case InChanges of 
+        [] -> io:format("\nChanges to input: none");
+        _ -> io:format("\nChanges to input:\n~p\n", [InChanges])
+    end,
+    case OutChanges of 
+        [] ->io:format("\nChanges to output: none");
+        _ -> io:format("\nChanges to output:\n~p\n", [OutChanges])
+    end;
+display_an_api_change({api_added, E}) ->
+    io:format("\n***API Added:***\n"),
+    io:format("~p\n", [E]);
+display_an_api_change({api_deleted, E}) ->
+    io:format("\n***API Deleted:***\n ~s \n", [element(1, E)]).
+    
+
+display_type_changes(TypeChanges) ->
+    case TypeChanges of 
+        [] ->
+            io:format("\n\n            ****** Type Changes: none ******\n\n");
+        _ ->
+            io:format("\n            ****** Type Changes: ******\n\n"),
+            [display_a_type_change(TypeChange)||TypeChange<-TypeChanges]
+    end.
+
+display_a_type_change({type_changed, E1, E2, {Elems, Attrs}}) ->
+    io:format("\n***Type Change***:", []),
+    io:format("\nBefore:\n~p\n", [E1]),
+    io:format("\nAfter:\n~p\n", [E2]),
+    ElemChanges =[{C,E}||{C, E}<-Elems, C/=unchanged],
+    AttrChanges=[{C,A}||{C, A}<-Attrs, C/=unchanged],
+    case ElemChanges of 
+        [] -> ok;
+        _ -> io:format("\nChanges to elements:\n~p\n", [ElemChanges])
+    end,
+    case AttrChanges of 
+        [] -> ok;
+        _ -> io:format("\nChanges to attributes~p\n", [AttrChanges])
+    end;
+display_a_type_change({type_deleted, E})->
+    io:format("\n***Type Deleted:***\n"),
+    io:format("~p\n", [E]);
+display_a_type_change({type_added, E})->
+    io:format("\n*** New Type:***\n"),
+    io:format("~p\n", [E]).
 
 analyze_model(XsdFile, WsdlFile) ->
     LibDir = code:lib_dir('WSToolkit'),
@@ -85,7 +152,9 @@ analyze_model(XsdFile, WsdlFile) ->
         {ok, Res} ->
             {ok, DataModel} = gen_xsd_model:gen_xsd_model(XsdFile),
             #model{tps=Types0} = DataModel,
-            Types =[{T#type.nm, T#type.els, T#type.atts}
+            Types =[{T#type.nm, 
+                     [E#el{nr=0}||E<-T#type.els],
+                     [A#att{nr=0}||A<-T#type.atts]}
                     ||T<-Types0, T#type.nm/='_document'],
             Choice = Res#'DescriptionType'.choice, 
             Interface=lists:keyfind('InterfaceType', 1, Choice),
@@ -146,7 +215,7 @@ analyze_api_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, Renames}, 
     case lists:keyfind({d, E}, 1, ParaChanges) of 
         {{d, E={N, I, O, _}}, {i, E1={N1, I1, O1, _}}} ->
             Res = analyze_input_output_change({N, I, O}, {N1, I1, O1}),
-            analyze_api_changes_2(Others, InterfaceChanges, [{changed, E, E1, Res}|Acc]);
+            analyze_api_changes_2(Others, InterfaceChanges, [{api_parameter_changed, E, E1, Res}|Acc]);
         false ->
             case lists:keyfind({d,E}, 1, Renames) of 
                 {{d, E}, {i, E1}} ->
@@ -235,32 +304,32 @@ analyze_input_output_changes_2([{d, E}|Others], InterfaceChanges={ParaChanges, R
     Changes = ParaChanges++Renames,
     case lists:keyfind({d,E}, 1, Changes) of 
         false when Type==in->
-            analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{deleted, E}|Acc]);
+            analyze_input_output_changes_2(Others, InterfaceChanges, Type, [{type_element_deleted, E}|Acc]);
         false when Type==out->
-            analyze_input_output_changes_2(Others, InterfaceChanges, Type,[{deleted, E}|Acc]);
+            analyze_input_output_changes_2(Others, InterfaceChanges, Type,[{type_element_deleted, E}|Acc]);
         {{d, E}, {i, E1}} when Type==in->
             case lists:member({{d, E}, {i, E1}}, ParaChanges) of 
                 true ->
                     analyze_input_output_changes_2(
-                      Others, InterfaceChanges, Type,[{type_changed, E, E1}|Acc]);
+                      Others, InterfaceChanges, Type,[{type_element_changed, E, E1}|Acc]);
                 false ->
                     analyze_input_output_changes_2(
-                      Others, InterfaceChanges, Type,[{renamed, E, E1}|Acc])
+                      Others, InterfaceChanges, Type,[{type_element_renamed, E, E1}|Acc])
             end;
         {{d, E}, {i, E1}} when Type==out->
             case lists:member({{d, E}, {i, E1}}, ParaChanges) of 
                 true ->
                     analyze_input_output_changes_2(
-                      Others, InterfaceChanges, Type,[{api_output_field_type_changed, E, E1}|Acc]);
+                      Others, InterfaceChanges, Type,[{type_element_type_changed, E, E1}|Acc]);
                 false ->
                     analyze_input_output_changes_2(
-                      Others, InterfaceChanges, Type,[{api_output_field_renamed, E, E1}|Acc])
+                      Others, InterfaceChanges, Type,[{type_element_renamed, E, E1}|Acc])
             end
     end;
 analyze_input_output_changes_2([{i,E}|Others], InterfaceChanges, in, Acc)->
-    analyze_input_output_changes_2(Others, InterfaceChanges, in, [{added, E}|Acc]);
+    analyze_input_output_changes_2(Others, InterfaceChanges, in, [{type_element_added, E}|Acc]);
 analyze_input_output_changes_2([{i,E}|Others], InterfaceChanges, out, Acc)->
-    analyze_input_output_changes_2(Others, InterfaceChanges, out, [{added, E}|Acc]).
+    analyze_input_output_changes_2(Others, InterfaceChanges, out, [{type_element_added, E}|Acc]).
         
 
 calc_api_dist({Name1, Input1, Output1, Method1}, {Name2, Input2, Output2, Method2}) ->
@@ -357,7 +426,7 @@ analyze_type_changes_2([{d, E}|Others], InterfaceChanges={FieldChanges, Renames}
     case lists:keyfind({d, E}, 1, FieldChanges) of
         {{d, E}, {i, E1}} ->
             Res = analyze_input_output_change(E, E1),
-            analyze_type_changes_2(Others, InterfaceChanges, [{field_changed, E, E1, Res}|Acc]);
+            analyze_type_changes_2(Others, InterfaceChanges, [{type_changed, E, E1, Res}|Acc]);
         false ->
             case lists:keyfind({d,E}, 1, Renames) of 
                 {{d, E}, {i, E1}} ->

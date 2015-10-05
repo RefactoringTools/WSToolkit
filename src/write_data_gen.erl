@@ -141,17 +141,17 @@ header(ModuleName) ->
     "-compile(export_all).\n\n".
 
 write_data_generators_1(#model{tps = Types}) ->
-    Acc ="\n\n"
-         "%%----------------------------------------------------------\n"
-         "%% Data generators\n"
-        "%%----------------------------------------------------------\n",
-    write_data_generators_2(Types, Types, Acc).
+    write_data_generators_2(Types, Types, header()).
 
 write_data_generators_1(#model{tps = Types},InputDataTypes) ->
-    Acc = "%%% Data Generators.\n\n",
     AllInputTypes = get_all_input_types(InputDataTypes, Types), 
-    write_data_generators_2(AllInputTypes, Types,  Acc).
+    write_data_generators_2(AllInputTypes, Types,  header()).
     
+header()->
+    "\n\n"
+    "%%----------------------------------------------------------\n"
+    "%% Data generators\n"
+    "%%----------------------------------------------------------\n".
   
 write_data_generators_2(AllInputTypes, AllTypes, Acc) ->
     Generators=[write_a_data_gen(T, AllTypes)
